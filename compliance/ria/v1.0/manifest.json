@@ -1,0 +1,18 @@
+{
+  "industry": "ria",
+  "version": "1.0",
+  "status": "draft",
+  "description": "RIA (SEC- and state-registered investment advisers) compliance ruleset for WRI v1. Source citations live in rules.md; machine-readable rules in rules.json.",
+  "created": "2026-05-31",
+  "review": {
+    "two_person_required": true,
+    "reviewers": [],
+    "approved": false
+  },
+  "artifacts": {
+    "rules_machine": "rules.json",
+    "rules_human": "rules.md",
+    "disclosures_dir": "disclosures/"
+  },
+  "notes": "PLACEHOLDER. Do not mark approved or use in generation until rules are authored from the PRD §5 compliance framework and the active RIA regulatory sources, then passed through two-person review (PRD §5.7)."
+}

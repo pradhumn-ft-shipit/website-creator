@@ -1,0 +1,10 @@
+{
+  "$schema": "./rules.schema.json",
+  "industry": "ria",
+  "version": "1.0",
+  "status": "draft",
+  "prohibited_terms": [],
+  "required_disclosures": [],
+  "conditional_rules": [],
+  "_placeholder": "Author from PRD §5 + active RIA regulatory sources. prohibited_terms = Layer 2 scan list; required_disclosures = footer/page disclosures that must be present. Validated by `npm run lint:rulesets`."
+}
