@@ -4,7 +4,7 @@
 > The plan is the collection of tickets in `issues/`. This file is the at-a-glance DAG + status.
 > There are no phases — only "what is currently unblocked." Pick the lowest-ID unblocked ticket.
 
-## Status: Planned — all 37 tickets written
+## Status: 003 done — auth (signup/login/verify/reset + OAuth + route guard) built; 010, 027, 032, 033 unblock
 
 Repo scaffolded; PRD read end-to-end; full 37-ticket v1 DAG defined and all `issues/NNN-*.md` files
 written. Nothing committed yet (kept local by request). Next: review the DAG, then start **001**.
@@ -73,20 +73,57 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 
 ## Unblocked right now
 
-- **001** — Platform scaffold. Everything hangs off it. **Start here.**
-- (Authoring of **005** compliance content can begin in parallel; its `lint:rulesets` script lands with 001.)
-
-After 001 merges → 002, 004, 005, 007*, 008, 009, 011, 037 unblock (*007 also needs 008).
+- **004** Email infra (Resend), **005** RIA ruleset, **008** Gemini client, **009** Inngest/state machine,
+  **011** Waitlist, **037** Platform legal — all unblocked by 001. (007 still needs 008.)
+- **003 done** now unblocks: **027** Dashboard shell (also needs 002 ✓), **033** /admin/orders (also 009),
+  **010** Onboarding (also 009), **032** Billing (also 004, 025). 027 is the cleanest next pick (002 ✓ + 003 ✓).
+- 002 also directly unblocks 006, 014, 023, 028, 031 (per their `⊣` once their other blockers land).
 
 ## In progress
 - _none_
 
 ## Done
+- **003 — Auth: signup/login + email verification (PRD §4.1, §4.7, §9.1).** Email/password + Google OAuth
+  on Supabase Auth. New migration `*_auth_user_provisioning.sql`: `on_auth_user_created` AFTER INSERT
+  trigger on `auth.users` mints the paired `public.users` + `public.accounts` rows (id == auth.uid(),
+  the invariant 002's RLS relies on) for every signup path; a second trigger mirrors `email_confirmed_at`
+  → `users.email_verified_at`. Service layer (`lib/auth/{validation,service,session}.ts`) maps Supabase
+  errors → `AppError`, implements §4.7 duplicate detection (empty-identities → neutral dual-action message,
+  no status disclosure) and verify-first/no-enumeration login. Route handlers via the envelope:
+  `/api/auth/{signup,login,logout,reset-password,update-password}` (POST) + `/api/auth/callback` (GET,
+  code/token_hash → session, covers OAuth + email confirm + recovery). `src/proxy.ts` (Next 16 renamed
+  middleware) refreshes the session + guards routes (unauth → /login?next=…, authed-on-auth-page →
+  /dashboard). UI: `(auth)` group — login / signup / check-email / reset-password / update-password +
+  shared `components/auth/*` + shadcn input/label (native, no new dep) + `/dashboard` placeholder (→ 027).
+  51 tests green (auth validation/service unit + login/signup frontend tests); typecheck/lint/build green.
+  Visual-QA pass: Lighthouse a11y **100**, best-practices 100, console clean, responsive 375px/desktop,
+  44px tap targets. _Deferred (no Supabase/Docker this session): live signup→verify→session round-trip,
+  live Google OAuth, authenticated-route pass, live reset email — see decisions.md catch-up commands.
+  Verification email uses Supabase's built-in sender until 004 swaps in Resend (seam in place). Not committed
+  (kept local per convention)._
+- **002 — Core DB schema + generated types (PRD §10).** Two Supabase migrations: `*_core_schema.sql`
+  (all 17 §10.1 tables, PKs/FKs, enum-like `text`→CHECK columns incl. the full §18.1 order-status set,
+  append-only triggers on `generated_content` + `compliance_rulesets`, assets replacement audit chain) +
+  `*_rls_policies.sql` (RLS on all 17 tables; owner policies via `owns_account/order/site` SECURITY DEFINER
+  helpers; internal/admin tables policy-less = deny-by-default). Service-role client (`lib/supabase/admin.ts`);
+  hand-authored `database.types.ts` (mirrors migration; `gen:types` pending Docker) + `PUBLIC_TABLES`;
+  `GET /api/health/db` row-count probe via the envelope; `supabase/seed.sql` user→account→order chain.
+  19 tests green (getDbHealth unit + static schema-consistency), typecheck/lint/build green.
+  _Deferred (Docker unavailable): `db push`, `gen:types`, live `/api/health/db` round-trip — see decisions.md
+  for the exact catch-up commands. Not committed (kept local per convention)._
+- **001 — Platform scaffold & `{data,error}` envelope.** Next.js 16 (App Router) + TS + Tailwind v4
+  in `platform/`; central `apiHandler`/`AppError` envelope (`src/lib/api/envelope.ts`); Supabase
+  server+browser clients; shadcn/ui (Button) + Lucide + §7.3 tokens (Inter, neutral+indigo+semantic,
+  dark vars wired); `/api/health` + `/health` end-to-end proof; Vitest harness (9 tests) incl. the
+  first frontend component test; `.env.example` + README. dev/build/lint/typecheck/test all green.
+  _Not committed yet (kept local per prior convention). MCP visual-QA pass deferred — server not
+  connected this session._
 - Repo scaffold (git init, state/, issues/, compliance/ria/v1.0/, platform/, templates/, .gitignore).
 - PRD read end-to-end; v1 DAG defined.
 
 ## Blocked
-- Everything except 001 (and 005 authoring) — see `⊣ blocked by` above.
+- Everything except 004, 005, 008, 009, 011, 037 (unblocked by 001) and 027 (unblocked by 002+003) —
+  see `⊣ blocked by` above. (001, 002, 003 done.)
 
 ## Notes / external prerequisites (PRD §17.5)
 - GitHub App registration → needed for 024.
