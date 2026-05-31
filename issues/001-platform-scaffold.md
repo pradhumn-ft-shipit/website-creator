@@ -15,11 +15,13 @@ Stand up the Next.js platform with the conventions every later ticket depends on
 - **Verify path:** `GET /api/health` returns `{data:{status:"ok"},error:null}` via the envelope; `/health` page renders it. One `AppError` unit test proves the error shape.
 
 ## Acceptance
-- [ ] `npm run dev`, `build`, `lint`, `typecheck`, `test` all pass from `platform/`.
-- [ ] `GET /api/health` returns the exact `{data,error}` envelope; a forced `AppError` returns `{data:null,error:{message,code}}`.
-- [ ] `/health` page renders the API result; base layout uses Inter + the §7.3 palette.
-- [ ] shadcn/ui + Lucide installed and one component (e.g. Button) renders.
-- [ ] `.env.example` documents required keys; README in `platform/` lists the commands.
+- [x] `npm run dev`, `build`, `lint`, `typecheck`, `test` all pass from `platform/`. (dev: served `/`, `/health`, `/api/health` live; build: 6/6 pages; test: 9 passing.)
+- [x] `GET /api/health` returns the exact `{data,error}` envelope; a forced `AppError` returns `{data:null,error:{message,code}}`. (Live: `{"data":{"status":"ok"},"error":null}`; both shapes proven in `src/lib/api/envelope.test.ts`.)
+- [x] `/health` page renders the API result; base layout uses Inter + the §7.3 palette. (SSR'd initial value + live "Re-check"; `<html>` carries the Inter `--font-inter` class; tokens in `globals.css`.)
+- [x] shadcn/ui + Lucide installed and one component (e.g. Button) renders. (`src/components/ui/button.tsx` + `components.json`; `data-slot="button"` confirmed in rendered HTML; Lucide icons in use.)
+- [x] `.env.example` documents required keys; README in `platform/` lists the commands. (`platform/.env.example` + rewritten `platform/README.md`.)
+
+> Note: build-loop §8a (chrome-devtools MCP visual QA) was **not** run — that MCP server is not connected in this session. Live-server curl confirmed every route renders; run the MCP visual pass in a session where it's connected before final sign-off.
 
 ## Notes
 - Single library only: shadcn/ui + Tailwind + Lucide. No other UI lib without a `state/decisions.md` entry.
