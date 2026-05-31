@@ -1,0 +1,22 @@
+-- ============================================================================
+-- Seed — one user → account → order chain, so a fresh DB has something to
+-- round-trip (PRD §10 verify path; ticket 002 acceptance). Run automatically
+-- by `supabase db reset`. Idempotent: fixed UUIDs + ON CONFLICT DO NOTHING.
+-- Runs as the postgres superuser, which bypasses RLS.
+-- ============================================================================
+
+insert into public.users (id, email, email_verified_at)
+values ('00000000-0000-0000-0000-000000000001', 'seed-advisor@example.com', now())
+on conflict (id) do nothing;
+
+insert into public.accounts (id, user_id, firm_name, industry, sub_industry, primary_state, subscription_status, plan)
+values ('00000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000001',
+        'Seed Capital Advisors', 'ria', 'ria_sec', 'CA', 'active', 'monthly')
+on conflict (id) do nothing;
+
+insert into public.orders (id, account_id, status)
+values ('00000000-0000-0000-0000-000000000003',
+        '00000000-0000-0000-0000-000000000002',
+        'payment_received')
+on conflict (id) do nothing;
