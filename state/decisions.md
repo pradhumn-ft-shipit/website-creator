@@ -287,3 +287,65 @@ Lighthouse a11y **100** / best-practices 100, zero console errors/warnings, resp
 4. Password reset email → recovery link → `/update-password` → new password works.
 
 **Not committed:** kept local, consistent with the 001/002 convention.
+
+---
+
+## 2026-05-31 — Foundation 001–003 committed
+
+**Context:** First real commits of the platform code. The repo's only prior commit was the seed snapshot
+(PRD + tickets + state + compliance scaffold) — it contained **no** `platform/` code; 001–003 were built
+across earlier sessions but never committed.
+
+**Choices:**
+- **Branched off `main` (`foundation-001-003`), did not commit to `main` directly.** Harness convention is
+  branch-first off the default branch. No remote exists, so this is local-only; fast-forward `main` when ready
+  (`git checkout main && git merge --ff-only foundation-001-003`).
+- **Three ticket-mapped commits in dependency order (001 → 002 → 003)**, each bundling that ticket's code with
+  its `issues/00N` file; the cumulative `state/plan.md` + `state/decisions.md` rode with the 003 commit (so no
+  commit is state-only, per the CLAUDE.md rule). File→ticket attribution by module: envelope/scaffold→001,
+  schema/migrations/admin-client→002, auth/proxy/auth-migration→003. Intermediate commits aren't independently
+  buildable (the shared `database.types.ts` lands in 002), accepted — no remote/CI verifies per-commit state.
+
+---
+
+## 2026-05-31 — Ticket 027 (Slice 1): Dashboard shell + Site Overview
+
+**Context:** First customer-dashboard ticket and the first multi-tab shell. The full ticket (8-tab nav +
+Site Overview + a complete Settings surface incl. account deletion) is well past the 5-file guardrail and
+would fill context, so it was split.
+
+**Choices:**
+- **Two vertical slices.** **Slice 1 (this push):** shell + nav + 7 coming-soon stubs + Site Overview +
+  §7.6 loading/empty/error — the visible landing that unblocks 028–032, with **zero schema change** (pure
+  read-only UI). **Slice 2 (next):** the Settings surface (profile/email/password, notification prefs, domain
+  settings, account deletion w/ 30-day grace), which needs its own migration — isolating it keeps Slice 1
+  schema-free. Per CLAUDE.md "split if it fills context" + the >5-file guardrail.
+- **Nav is a single config** (`lib/dashboard/nav.ts`): sidebar, mobile drawer, and per-tab headers all read
+  it; `ready:false` tabs route to a `ComingSoon` placeholder that names the delivering ticket (§7.10 — no
+  broken/half-built screens). `activeNavKey` resolves the active tab by **longest-prefix** match so the
+  `/dashboard` root → Overview while `/dashboard/leads/123` → Leads. Flipping a tab live = one boolean.
+- **Site Overview data layer** (`lib/dashboard/overview.ts`) keeps all derivation pure and unit-tested
+  (`deriveDomainStatus`, `buildSiteOverview`, `ensureHttps`); only `getSiteOverview` touches IO (RLS-scoped
+  `sites` read, `.maybeSingle()`, null = not-live empty state). Live URL prefers a verified custom domain,
+  else the Vercel subdomain, else null (pre-deploy → disabled "Visit live site").
+- **Badge primitive contrast fix (§7 / WCAG AA).** The bright semantic tokens (`success` L0.62, `warning`
+  L0.75) fail 4.5:1 as text on a light tint; Lighthouse caught both the status badges (3.05:1) and the nav
+  "Soon" pill. Reworked the tinted Badge variants to **darker hue-matched text via fixed oklch** (e.g.
+  `text-[oklch(0.43_0.14_145)]` on `bg-success/15`) and made "Soon" a bordered `text-foreground/75` pill.
+  Fixed-oklch (not a token) is acceptable because **v1 is light-only**; revisit when dark mode ships (v1.5).
+  → a11y went 95 → **100**.
+- **Visual-QA without a live session.** The dashboard is auth-gated and there's no Supabase this session, so
+  drove chrome-devtools over a **temporary public preview route** (`/preview-027`) rendering the real shell +
+  Site Overview with mock data (+ a placeholder `.env.local` so dev boots, + a temporary `PUBLIC_PATHS` entry).
+  All of it — route, middleware edit, env, screenshots — **fully torn down** before finishing; working tree
+  holds only 027 files. Result: a11y 100 / best-practices 100, console clean, responsive 375px + 1280px,
+  mobile drawer verified. This is the repeatable recipe for QA'ing any future auth-gated screen pre-Supabase.
+
+**Deferred (no Docker/Supabase, same as 001–003):** live read of the `sites`/`accounts` rows through
+`getSiteOverview` + the layout's account query. Rendering is proven via the mock-data preview + component
+tests; the live round-trip joins the 001–003 catch-up list (run once `npx supabase start && db reset` + real
+`NEXT_PUBLIC_SUPABASE_*` are in place): sign in → `/dashboard` shows the empty state with no site row, then a
+seeded `sites` row surfaces the live URL + correct domain badge.
+
+**Green this session:** `npm test` (75 — +24 for nav/overview logic + nav/site-overview component tests),
+`npm run typecheck`, `npm run lint`, `npm run build`.

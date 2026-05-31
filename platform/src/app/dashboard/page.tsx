@@ -1,57 +1,40 @@
 import type { Metadata } from "next";
-import { CheckCircle2 } from "lucide-react";
 
 import { FormMessage } from "@/components/auth/form-message";
-import { requireUser } from "@/lib/auth/session";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { SiteOverviewView } from "@/components/dashboard/site-overview";
+import { getSiteOverview } from "@/lib/dashboard/overview";
 
-import { SignOutButton } from "./sign-out-button";
-
-export const metadata: Metadata = { title: "Dashboard · WRI" };
+export const metadata: Metadata = { title: "Site Overview · WRI" };
 
 /**
- * Placeholder authenticated landing — proves the auth boundary end-to-end
- * (middleware lets verified sessions through; everyone else is bounced to
- * /login). Ticket 027 replaces this with the real dashboard shell + Site
- * Overview; for now it just confirms who's signed in and offers sign-out.
+ * Site Overview — the dashboard landing tab (PRD §12.2). Fetches the advisor's
+ * site (or null = not-live empty state); a thrown DB error escalates to the
+ * dashboard error boundary (§7.6). Arriving with ?verified=1 (post email
+ * confirmation) shows the verified-success banner.
  */
-export default async function DashboardPage({
+export default async function OverviewPage({
   searchParams,
 }: {
   searchParams: Promise<{ verified?: string }>;
 }) {
-  const user = await requireUser();
   const { verified } = await searchParams;
+  const overview = await getSiteOverview();
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <SignOutButton />
-      </div>
+    <>
+      <PageHeader
+        title="Site Overview"
+        description="Your website's address, custom domain, and deployment status."
+      />
 
       {verified ? (
-        <div className="mt-6">
-          <FormMessage tone="success">
-            Your email is verified — your account is ready.
-          </FormMessage>
-        </div>
+        <FormMessage tone="success">
+          Your email is verified — your account is ready.
+        </FormMessage>
       ) : null}
 
-      <div className="bg-card mt-6 rounded-xl border p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="bg-success/10 text-success flex size-9 items-center justify-center rounded-lg">
-            <CheckCircle2 className="size-4" aria-hidden />
-          </span>
-          <div>
-            <p className="text-sm font-medium">You&apos;re signed in</p>
-            <p className="text-muted-foreground text-xs">{user.email}</p>
-          </div>
-        </div>
-        <p className="text-muted-foreground mt-4 text-sm">
-          This is a placeholder. The full dashboard — Site Overview, edit chat,
-          leads, and billing — arrives with ticket 027.
-        </p>
-      </div>
-    </main>
+      <SiteOverviewView overview={overview} />
+    </>
   );
 }

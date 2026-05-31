@@ -4,7 +4,9 @@
 > The plan is the collection of tickets in `issues/`. This file is the at-a-glance DAG + status.
 > There are no phases — only "what is currently unblocked." Pick the lowest-ID unblocked ticket.
 
-## Status: 003 done — auth (signup/login/verify/reset + OAuth + route guard) built; 010, 027, 032, 033 unblock
+## Status: 027 Slice 1 done — dashboard shell + nav + Site Overview built (Settings = Slice 2, remaining)
+
+001–003 committed (branch `foundation-001-003`); 027 Slice 1 in progress on the same branch.
 
 Repo scaffolded; PRD read end-to-end; full 37-ticket v1 DAG defined and all `issues/NNN-*.md` files
 written. Nothing committed yet (kept local by request). Next: review the DAG, then start **001**.
@@ -75,14 +77,35 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 
 - **004** Email infra (Resend), **005** RIA ruleset, **008** Gemini client, **009** Inngest/state machine,
   **011** Waitlist, **037** Platform legal — all unblocked by 001. (007 still needs 008.)
-- **003 done** now unblocks: **027** Dashboard shell (also needs 002 ✓), **033** /admin/orders (also 009),
-  **010** Onboarding (also 009), **032** Billing (also 004, 025). 027 is the cleanest next pick (002 ✓ + 003 ✓).
+- **003 done** unblocked: **027** Dashboard shell (✓ Slice 1 built), **033** /admin/orders (also 009),
+  **010** Onboarding (also 009), **032** Billing (also 004, 025).
+- **027 Slice 1 done** — the dashboard shell + nav now exist, so **028** (Leads tab), **029** (Edit chat),
+  **030** (Assets/Team), **031** (Blog), **032** (Billing) each have a shell to hang their tab on (each still
+  gated by its own other blockers). 027 **Slice 2 (Settings)** is itself a clean next pick (no new blockers).
 - 002 also directly unblocks 006, 014, 023, 028, 031 (per their `⊣` once their other blockers land).
 
 ## In progress
-- _none_
+- **027 — Customer dashboard shell + Site Overview.** **Slice 1 done** (this push). **Slice 2 remaining:**
+  Settings tab — profile/email/password, notification prefs, domain settings, account deletion (30-day
+  grace). Needs a migration (`accounts.deletion_requested_at` + notification-prefs column) + account
+  service + routes. Until then the Settings tab shows the coming-soon placeholder.
 
 ## Done
+- **027 (Slice 1) — Dashboard shell + nav + Site Overview (PRD §12.1, §12.2, §7.3/§7.6).** Auth-gated
+  shell (`dashboard/layout.tsx` → `DashboardShell`: fixed desktop sidebar + mobile slide-over drawer +
+  account footer). All 8 §12.1 tabs from one config (`lib/dashboard/nav.ts`, `activeNavKey` longest-prefix
+  active match); the 7 not-yet-built tabs route to `StubTab`→`ComingSoon` (§7.10, names the delivering
+  ticket). Site Overview (`SiteOverviewView` + `lib/dashboard/overview.ts`): live URL (verified custom
+  domain → subdomain fallback), domain-status badge (`deriveDomainStatus`: not_configured/pending/verified
+  ← `sites.custom_domain_verified_at`), last-deployed, template, "Visit live site", + designed not-live
+  empty state. §7.6 states: `loading.tsx` skeleton + `error.tsx` (human message + Try again). Added
+  `Badge` primitive (tinted variants darkened to clear WCAG AA on their washes). Sign-out button moved
+  to `components/dashboard/`. **Zero schema change.** 75 tests green (24 new: nav + overview logic + nav
+  + site-overview component tests); typecheck/lint/build green. Visual-QA (chrome-devtools, temp preview
+  route, fully torn down): **Lighthouse a11y 100 / best-practices 100**, console clean, responsive
+  375px + 1280px, mobile drawer verified. _Live Supabase read of `sites`/`accounts` deferred (no Docker
+  this session — same constraint as 001–003); render proven via mock-data preview + component tests._
+
 - **003 — Auth: signup/login + email verification (PRD §4.1, §4.7, §9.1).** Email/password + Google OAuth
   on Supabase Auth. New migration `*_auth_user_provisioning.sql`: `on_auth_user_created` AFTER INSERT
   trigger on `auth.users` mints the paired `public.users` + `public.accounts` rows (id == auth.uid(),
