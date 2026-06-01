@@ -4,9 +4,10 @@
 > The plan is the collection of tickets in `issues/`. This file is the at-a-glance DAG + status.
 > There are no phases — only "what is currently unblocked." Pick the lowest-ID unblocked ticket.
 
-## Status: 008 Gemini client DONE — AI call chokepoint live (next to 009, both committed on `foundation-001-003`)
+## Status: 008 Gemini client + 009 Inngest/state-machine DONE — AI chokepoint + pipeline spine both live
 
-001–003, 00A, 027 (both slices), 008 committed (branch `foundation-001-003`); 009 landing alongside 008.
+001–003, 00A, 027 (both slices), 008, 009 all committed (branch `foundation-001-003`). 008 & 009 were built
+in parallel (isolated worktrees) and reconciled at integration on the rate-limit seam (see decisions.md).
 
 Repo scaffolded; PRD read end-to-end; full 37-ticket v1 DAG defined and all `issues/NNN-*.md` files
 written. Nothing committed yet (kept local by request). Next: review the DAG, then start **001**.
@@ -80,6 +81,11 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 
 - **004** Email infra (Resend), **005** RIA ruleset, **011** Waitlist, **037** Platform legal — unblocked by 001.
 - **008 done** unblocks **007** Prompt+eval harness (⊣ 001, 008 — now fully unblocked) and feeds 006/012/014/020/022.
+- **009 done** unblocks **033** /admin/orders (⊣ 009, 002, 003 — now fully unblocked) and **010** Onboarding
+  (⊣ 003, 009 — now unblocked, light wireframe checkpoint). Also a hard blocker cleared for 012/014/020/022/024/025/026.
+- **Next best picks:** **033** (admin orders — consumes 009's `admin_alerts` escalation, most leverage),
+  **007** (prompt+eval harness — pairs with 008), **010** (onboarding — first real order.created producer),
+  or **005**/**004** (still standalone). **006** Layer-2 validator now needs only **005** (002+008 done).
 - **003 done** unblocked: **027** Dashboard shell (✓ Slice 1 built), **033** /admin/orders (also 009),
   **010** Onboarding (also 009), **032** Billing (also 004, 025).
 - **027 done (both slices)** — the dashboard shell + nav + Site Overview + Settings now exist, so **028**
@@ -91,6 +97,23 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 - _(nothing in flight)_
 
 ## Done
+- **009 — Inngest setup + order state machine (PRD §9.2, §13.1, §13.2, §18.1).** The pipeline spine.
+  **State machine** (`lib/orders/`): pure `transitions.ts` (ordered §18.1 states + legal transition table,
+  incl. the `scrape_failed → docs_upload_fallback` branch) + `state-machine.ts` (`transitionOrder` persists
+  `status` + `state_machine_position` on the `orders` row, `IllegalTransitionError` on any illegal hop) —
+  pure core split from IO, same pattern as auth/account. **Inngest** (`lib/inngest/`): `client.ts` + serve
+  route `/api/inngest`; `order.created` triggers `runPipeline`, which walks every stage as a thin `step.run`
+  stub (scrape→intake→iapd→generation→validate→layer3→images→repo→build→deploy→verify→email→dns) advancing
+  state, each with its §13.2 retry policy (`STEP_RETRY_POLICY`: deploy ×3 backoff, build ×1, generation ×1).
+  **Failure escalation**: `handleStepFailure` → `escalateOrderFailure` writes an `admin_alerts` row
+  (`type:'order_failed'` + trace) for `/admin/orders` (033). **008 seam**: `isRateLimitError()` catches a real
+  `GeminiRateLimitError` (proven in `errors.test.ts` — imports both sides), logs to `state/rate-limits.md` via
+  `appendRateLimitLog`, then rethrows so Inngest backs off + retries. **Layer-3 gating** centralized in
+  `layer3Required({verdict, siteIndex})` (§5.2/§13.3) — currently first-50 OR Layer-2-flagged. Dep: `inngest
+  ^3.54.2`. **No schema change** (002 already had `state_machine_position` + `admin_alerts`). **164 tests /
+  typecheck / lint / build green** (incl. the 008⇄009 seam test). _Deferred (`[~]`): live `npx inngest-cli dev`
+  round-trip + live DB writes (no infra/Docker this session, same as 001–003) — wiring build-verified;
+  catch-up in decisions.md._ **Q4c still open:** flip `layer3Required` to flagged-only (one-function change).
 - **008 — Gemini client wrapper + cost guard (PRD §8.1, §8.4, §8.2).** One deep module `src/lib/gemini/`
   — the single chokepoint every AI call goes through. **Model routing** (`models.ts resolveModel`): pro
   (generation) / flash (Layer-2 + edit chat) / flash-image (capped images) / pro+search (admin research),
@@ -194,8 +217,8 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 - PRD read end-to-end; v1 DAG defined.
 
 ## Blocked
-- Everything except 004, 005, 008, 009, 011, 037 (unblocked by 001) and 027 (unblocked by 002+003) —
-  see `⊣ blocked by` above. (001, 002, 003 done.)
+- Now unblocked & pickable: **004, 005, 007, 010, 011, 033, 037** (+ **006** once 005 lands). Still blocked:
+  everything else — see `⊣ blocked by` above. (001, 002, 003, 027, 00A, 008, 009 done.)
 
 ## Notes / external prerequisites (PRD §17.5)
 - GitHub App registration → needed for 024.
@@ -207,5 +230,6 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 ## Open TBDs from the HIL→AFK pass (2026-05-31)
 - **Second compliance approver (005)** — name a second reviewer before the ruleset publishes.
 - **Flagged-site reviewer (034)** — name who works the Layer-3 queue.
-- **009 follow-up (Q4c)** — change the state-machine gating predicate routing orders into
-  `compliance_review_layer3` from "first-50 / first-10 / flagged" to **flagged-only**.
+- **009 follow-up (Q4c) — STILL OPEN.** 009 shipped `layer3Required({verdict, siteIndex})` implementing the
+  original §5.2 "first-50 OR Layer-2-flagged" gate. To apply Q4c, change this one predicate to **flagged-only**
+  (`verdict === 'fail'`) — centralized in `lib/inngest/pipeline.ts`, a one-function edit + test update.

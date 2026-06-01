@@ -15,12 +15,12 @@ The pipeline spine: Inngest wired, the order state machine modeled, transitions 
 - **Verify path:** firing `order.created` advances a seeded order through the stub pipeline to a terminal state; forcing a step error creates an `admin_alerts` row.
 
 ## Acceptance
-- [ ] Inngest dev server runs; `order.created` triggers the pipeline function.
-- [ ] An order walks every §18.1 state in order; illegal transitions are rejected.
-- [ ] Each transition persists `status` + `state_machine_position` on the `orders` row.
-- [ ] Per-step retry policies match §13.2 (deploy x3 backoff, build x1, generation x1, scrape→fallback).
-- [ ] A step failure beyond retry writes an `admin_alerts` row with an error trace.
-- [ ] Rate-limit errors from 008 trigger Inngest backoff + retry (and a `state/rate-limits.md` log entry).
+- [~] Inngest dev server runs; `order.created` triggers the pipeline function. _(client + `/api/inngest` serve route + typed `order.created` function all wired and build-verified; live `npx inngest-cli dev` round-trip deferred — no infra this session, catch-up in decisions.md)_
+- [x] An order walks every §18.1 state in order; illegal transitions are rejected. _(state-machine core: ordered states + legal transition table + `IllegalTransitionError`; `runPipeline` test drives payment_received → dns_monitoring; illegal-transition tests pass)_
+- [x] Each transition persists `status` + `state_machine_position` on the `orders` row. _(`transitionOrder`; tested against a mocked service-role client — live DB write deferred [~])_
+- [x] Per-step retry policies match §13.2 (deploy x3 backoff, build x1, generation x1, scrape→fallback). _(`STEP_RETRY_POLICY` + assertion test; scrape→docs_upload_fallback branch encoded in the transition table)_
+- [x] A step failure beyond retry writes an `admin_alerts` row with an error trace. _(`escalateOrderFailure` / `handleStepFailure`; test asserts `type:'order_failed'` + payload trace)_
+- [x] Rate-limit errors from 008 trigger Inngest backoff + retry (and a `state/rate-limits.md` log entry). _(008 seam `isRateLimitError`; `handleStepFailure` logs via `appendRateLimitLog` + rethrows; tested)_
 
 ## Notes
 - Vercel functions cap at 90–120s; all long work lives in Inngest steps, not API routes (§9.2). API routes only *enqueue*.

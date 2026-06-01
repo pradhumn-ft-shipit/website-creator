@@ -482,3 +482,40 @@ Built parallel with 009 in an isolated git worktree; integrated back onto `found
   structured object + token usage + estimated cost; then flip the §9.3 acceptance box.
 
 **Green:** `npm test` (126), `typecheck`, `lint`, `build`. **008 Done.**
+
+---
+
+## 2026-06-01 — 009 Inngest setup + order state machine (PRD §9.2, §13.1, §13.2, §18.1)
+
+Built parallel with 008 in an isolated git worktree; integrated back onto `foundation-001-003`.
+
+- **Pure state machine, separate from Inngest IO.** `lib/orders/transitions.ts` is a pure ordered-state +
+  legal-transition table (no IO, fully unit-tested incl. the `scrape_failed → docs_upload_fallback` branch);
+  `state-machine.ts` does the persisting `transitionOrder`. Same pure/IO split as `auth/` and `account/`.
+  Illegal hops throw `IllegalTransitionError` rather than silently persisting a bad state — the order machine
+  is the audit spine, so an impossible transition must be loud.
+- **Step bodies are thin stubs on purpose.** Each §18.1 stage is a `step.run` no-op that just advances state +
+  carries its §13.2 retry policy. Real work replaces the stubs in 012/014/020/022/024/025/026. This keeps 009
+  reviewable and lets downstream tickets land one step at a time without re-touching the spine.
+- **Dependency added: `inngest ^3.54.2`** — the locked background-jobs runtime (CLAUDE.md stack). Vercel
+  functions cap at 90–120s; scrape+generate+build+deploy exceeds that, so all long work lives in Inngest steps
+  and the Next API only enqueues. (Same transitive `npm audit` advisories as 008's install; not force-fixed.)
+- **No migration needed.** 002 already shipped `orders.state_machine_position` and the `admin_alerts` table,
+  so 009 is schema-free — it only reads/writes columns that exist.
+- **008 seam — reconciled at integration (see 008 entry).** 009 catches rate-limits via the duck-typed
+  `isRateLimitError()` guard, so it never imports 008's class for the catch. Added a real cross-ticket test
+  (`inngest/errors.test.ts` imports `GeminiRateLimitError` and asserts the guard recognises it + can read
+  `service`/`endpoint`) — this is the proof the parallel-built seam actually closes, not just two matching
+  literals. On a rate-limit, `handleStepFailure` logs to `state/rate-limits.md` then rethrows for Inngest backoff.
+- **Q4c deliberately NOT applied (still open).** Ticket text says Layer-3 gating should become flagged-only, but
+  that was an open HIL TBD, not a settled decision — so 009 implemented the original §5.2 "first-50 OR flagged"
+  gate and centralized it in `layer3Required()` so flipping to flagged-only later is a one-function change.
+  Flagged in plan.md Open TBDs; needs the owner's call before changing (business impact: how many sites get
+  manual Layer-3 review during alpha vs. auto-pass).
+- **Deferred (`[~]`): live `npx inngest-cli dev` round-trip + live DB writes.** No infra/Docker this session
+  (same as 001–003). Client + serve route + typed `order.created` function are wired and build-verified; tested
+  against a mocked `step` + mocked service-role client. **Catch-up:** `npm run dev` + (separate terminal)
+  `npx inngest-cli@latest dev`, fire `order.created` from the Inngest dev UI with a seeded order id, watch it
+  walk to `dns_monitoring`; force a step throw to see an `admin_alerts` row written. Then flip that acceptance box.
+
+**Green:** `npm test` (164), `typecheck`, `lint`, `build`. **009 Done.**
