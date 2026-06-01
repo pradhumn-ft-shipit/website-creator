@@ -449,3 +449,36 @@ the middleware allowance to `/preview*`, dummy `.env.local`) — all fully torn 
 Results: Settings `color-contrast` perfect + bp 100; **login a11y 100 / bp 100**; console clean; 390/1280px.
 
 **Green:** `npm test` (96), `typecheck`, `lint`, `build`. **00A Done. Light-only for v1; dark vars stubbed (v1.5).**
+
+---
+
+## 2026-06-01 — 008 Gemini client wrapper + cost guard (PRD §8.1, §8.4, §8.2)
+
+Built parallel with 009 in an isolated git worktree; integrated back onto `foundation-001-003`.
+
+- **One deep module, callers pass intent not model params.** `src/lib/gemini/` is the only place the model SDK
+  lives. Callers pass `{ useCase, schema, prompt }`; the module picks the model (§8.1), enforces budgets,
+  tracks cost, and types every failure. This is the §8 chokepoint the whole pipeline (006/012/020/022) sits on.
+- **Dependency added: `@google/genai ^2.7.0`** — the official Google Gen AI SDK. Nothing existing covers Gemini
+  access; we deliberately route ALL model calls through this one wrapper so the SDK surface never leaks to
+  callers. (`npm install` flagged 2 moderate-severity advisories in transitive deps; not `audit fix --force`'d
+  — that pulls breaking majors. Revisit before beta.)
+- **Fail loud, never truncate (§8.2.7).** Exceeding a hard token cap throws `TokenBudgetExceededError` rather
+  than silently trimming the prompt — a trimmed compliance prompt could drop a required disclosure. Same stance
+  on cost: `CostBudgetExceededError` stops the pipeline *before* spending past the <$2/site guard, not after.
+- **`generateJSON` repairs once, then errors.** Malformed model output gets one repair pass (re-prompt with the
+  validation errors); still-bad output raises `SchemaValidationError`. No free-text fallthrough — callers always
+  get a typed object or a typed error.
+- **009 seam — reconciled at integration.** 008 and 009 were written in parallel and defined the rate-limit
+  contract independently: 008's `GeminiRateLimitError` had `retryable:true` but 009's `isRateLimitError()` guard
+  is duck-typed on `isRateLimit===true` and its logger reads `service`/`endpoint`. Reconciled by adding
+  `isRateLimit:true` + `service:"gemini"` + `endpoint`(=model) to `GeminiRateLimitError` so 009 recognises and
+  logs it WITHOUT importing the gemini tree. Contract pinned in `gemini/errors.test.ts`; the end-to-end
+  "009 actually catches a real GeminiRateLimitError" proof lives in 009's inngest seam test.
+- **Deferred (`[~]`): live calls + separate dev key (§9.3).** No Gemini key this session (same constraint as
+  001–003). The real SDK is wired and `GEMINI_API_KEY` activates it; unit tests run against a mocked SDK
+  boundary (no Gemini emulator exists). **Catch-up:** set `GEMINI_API_KEY` (low-quota dev key) in
+  `platform/.env.local`, `npm run dev`, then `curl localhost:3000/api/dev/gemini-check` — expect a tiny
+  structured object + token usage + estimated cost; then flip the §9.3 acceptance box.
+
+**Green:** `npm test` (126), `typecheck`, `lint`, `build`. **008 Done.**

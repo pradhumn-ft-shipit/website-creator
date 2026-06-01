@@ -16,12 +16,12 @@ One deep module that every AI call goes through — model routing, structured-JS
 - **Verify path:** dev-gated endpoint generates a tiny structured object and returns token usage + estimated cost.
 
 ## Acceptance
-- [ ] `generateJSON()` returns schema-valid objects and rejects/repairs malformed model output.
-- [ ] Model routing selects pro / flash / flash-image / pro+search by use case.
-- [ ] Exceeding a hard token cap throws a typed error (no silent truncation).
-- [ ] Per-call token usage + estimated cost are returned and accumulable per site.
-- [ ] Rate-limit responses surface as a typed retryable error (consumed by 009).
-- [ ] Uses a separate dev API key with low quotas (§9.3); real calls (no emulator).
+- [x] `generateJSON()` returns schema-valid objects and rejects/repairs malformed model output. _(client.test.ts: parse + fenced-block extract + one repair pass + SchemaValidationError when repair fails — never free text.)_
+- [x] Model routing selects pro / flash / flash-image / pro+search by use case. _(models.ts `resolveModel`; models.test.ts covers all five §8.1 rows incl. research→Pro+search.)_
+- [x] Exceeding a hard token cap throws a typed error (no silent truncation). _(budgets.ts `assert*Cap` → `TokenBudgetExceededError`; budgets.test.ts + client.test.ts "fails loud" both green.)_
+- [x] Per-call token usage + estimated cost are returned and accumulable per site. _(GenerateJSONResult{usage,costUsd}; `CostAccumulator` per-site running total + $2 guard; cost.test.ts + client.test.ts.)_
+- [x] Rate-limit responses surface as a typed retryable error (consumed by 009). _(`GeminiRateLimitError` extends AppError; mapped from 429/503/quota; client.test.ts confirms `instanceof`, `.retryable`, `.model`, `.code`.)_
+- [~] Uses a separate dev API key with low quotas (§9.3); real calls (no emulator). _DEFERRED — no dev key this session (same constraint as 001–003). Real SDK (`@google/genai`) is wired; `GEMINI_API_KEY` activates it; `GET /api/dev/gemini-check` exercises it live once a key is set. Unit-tested against a mocked SDK boundary. Catch-up steps in decisions.md._
 
 ## Notes
 - **Guardrail:** Gemini calls cost real money; keep per-site under $2. If a design pushes past it, stop and confirm.

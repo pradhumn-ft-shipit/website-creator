@@ -4,9 +4,9 @@
 > The plan is the collection of tickets in `issues/`. This file is the at-a-glance DAG + status.
 > There are no phases — only "what is currently unblocked." Pick the lowest-ID unblocked ticket.
 
-## Status: 00A DONE — platform redesigned (warm Mercury + emerald, light-first); 027 DONE (both slices)
+## Status: 008 Gemini client DONE — AI call chokepoint live (next to 009, both committed on `foundation-001-003`)
 
-001–003 committed (branch `foundation-001-003`); 027 Slice 1 in progress on the same branch.
+001–003, 00A, 027 (both slices), 008 committed (branch `foundation-001-003`); 009 landing alongside 008.
 
 Repo scaffolded; PRD read end-to-end; full 37-ticket v1 DAG defined and all `issues/NNN-*.md` files
 written. Nothing committed yet (kept local by request). Next: review the DAG, then start **001**.
@@ -78,8 +78,8 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 
 ## Unblocked right now
 
-- **004** Email infra (Resend), **005** RIA ruleset, **008** Gemini client, **009** Inngest/state machine,
-  **011** Waitlist, **037** Platform legal — all unblocked by 001. (007 still needs 008.)
+- **004** Email infra (Resend), **005** RIA ruleset, **011** Waitlist, **037** Platform legal — unblocked by 001.
+- **008 done** unblocks **007** Prompt+eval harness (⊣ 001, 008 — now fully unblocked) and feeds 006/012/014/020/022.
 - **003 done** unblocked: **027** Dashboard shell (✓ Slice 1 built), **033** /admin/orders (also 009),
   **010** Onboarding (also 009), **032** Billing (also 004, 025).
 - **027 done (both slices)** — the dashboard shell + nav + Site Overview + Settings now exist, so **028**
@@ -91,6 +91,22 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 - _(nothing in flight)_
 
 ## Done
+- **008 — Gemini client wrapper + cost guard (PRD §8.1, §8.4, §8.2).** One deep module `src/lib/gemini/`
+  — the single chokepoint every AI call goes through. **Model routing** (`models.ts resolveModel`): pro
+  (generation) / flash (Layer-2 + edit chat) / flash-image (capped images) / pro+search (admin research),
+  one interface, model picked per call. **`generateJSON(schema, …)`** (`client.ts`): parse + fenced-block
+  extract + one repair pass, else `SchemaValidationError` — never free text. **Token budgets** (`budgets.ts`,
+  §8.4): per-op input/output targets + hard caps (full-site 30k/12k cap 50k/20k; Layer-2 5k/1k cap 10k/2k;
+  edit 1k/500 cap 3k/1.5k) → `TokenBudgetExceededError`, fail-loud, no silent truncation (§8.2.7). **Cost
+  guard** (`cost.ts` `CostAccumulator`): per-site running USD total + <$2 guard → `CostBudgetExceededError`.
+  **Typed errors** (`errors.ts`): `GeminiRateLimitError` is the **009 seam** — extends AppError, carries
+  `isRateLimit:true` + `service:"gemini"` + `endpoint`(model) + `retryAfterMs?` so 009's duck-typed
+  `isRateLimitError()` catches it and logs to `state/rate-limits.md` without importing the gemini tree
+  (contract pinned in `errors.test.ts`; end-to-end proof in 009's inngest seam test). **Verify path**:
+  dev-gated `GET /api/dev/gemini-check` returns a tiny structured object + token usage + estimated cost via
+  the envelope. Dep added: `@google/genai ^2.7.0` (decisions.md). **126 tests / typecheck / lint / build green.**
+  _Deferred (`[~]`): live calls / separate dev key (§9.3) — no key this session (same as 001–003); real SDK
+  wired, `GEMINI_API_KEY` activates it, unit-tested against a mocked SDK boundary. Catch-up in decisions.md._
 - **00A — Platform design system & visual identity.** Replaced the default-shadcn look (cold slate + generic
   indigo, flat) with the owner-chosen **warm trust-fintech (Mercury/Ramp) + emerald, light-first, balanced**
   direction. **Tokens** (`globals.css @theme`): warm stone neutrals, deep emerald `--primary` (AA-safe on
