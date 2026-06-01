@@ -38,7 +38,10 @@ export interface AuthClient {
       email: string,
       options?: { redirectTo?: string },
     ): AuthResult<unknown>;
-    updateUser(args: { password: string }): AuthResult<{
+    updateUser(
+      args: { password?: string; email?: string },
+      options?: { emailRedirectTo?: string },
+    ): AuthResult<{
       user: { id: string } | null;
     }>;
   };
@@ -162,6 +165,37 @@ export async function updatePassword(
   const { error } = await client.auth.updateUser({ password: params.password });
   if (error) mapAuthError(error);
   return { status: "updated" };
+}
+
+/**
+ * Change the signed-in advisor's login email (PRD §12.9). Supabase sends a
+ * confirmation link to the *new* address; the change only takes effect once it's
+ * clicked (routed back through /api/auth/callback). Until then the old email
+ * stays active — so this returns "confirmation_sent", never an immediate switch.
+ */
+export async function changeEmail(
+  client: AuthClient,
+  params: { email: string; emailRedirectTo: string },
+): Promise<{ status: "confirmation_sent" }> {
+  assertValid(validateEmail(params.email));
+
+  const { error } = await client.auth.updateUser(
+    { email: params.email.trim() },
+    { emailRedirectTo: params.emailRedirectTo },
+  );
+  if (error) {
+    // Supabase returns 422 when the address is already in use by another account;
+    // keep it neutral so we don't enumerate accounts (§4.7).
+    if (error.status === 422) {
+      throw new AppError(
+        "That email can't be used. Try a different address.",
+        "invalid_input",
+        422,
+      );
+    }
+    mapAuthError(error);
+  }
+  return { status: "confirmation_sent" };
 }
 
 export async function signOutAdvisor(

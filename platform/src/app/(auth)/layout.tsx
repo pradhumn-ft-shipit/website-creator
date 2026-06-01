@@ -22,13 +22,13 @@ export default function AuthLayout({
         href="/"
         className="text-foreground mb-8 inline-flex items-center gap-2 text-sm font-semibold tracking-tight"
       >
-        <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-md">
+        <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
           <ShieldCheck className="size-4" aria-hidden />
         </span>
         WRI
       </Link>
 
-      <div className="bg-card w-full max-w-sm rounded-2xl border p-7 shadow-sm">
+      <div className="bg-card w-full max-w-sm rounded-2xl border p-7 shadow-card">
         {children}
       </div>
 

@@ -4,7 +4,7 @@
 > The plan is the collection of tickets in `issues/`. This file is the at-a-glance DAG + status.
 > There are no phases — only "what is currently unblocked." Pick the lowest-ID unblocked ticket.
 
-## Status: 027 Slice 1 done — dashboard shell + nav + Site Overview built (Settings = Slice 2, remaining)
+## Status: 00A DONE — platform redesigned (warm Mercury + emerald, light-first); 027 DONE (both slices)
 
 001–003 committed (branch `foundation-001-003`); 027 Slice 1 in progress on the same branch.
 
@@ -19,6 +19,9 @@ written. Nothing committed yet (kept local by request). Next: review the DAG, th
 Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gate]` build runs AFK, only a sign-off/checkpoint/external gate remains · `→ blocks` · `⊣ blocked by`
 
 ### Foundation (full tickets written)
+- **00A** Platform design system & visual identity (warm Mercury/Ramp + emerald, light-first, balanced)
+  `[HIL: direction sign-off on Slice-1 proof; rollout AFK]` ⊣ — · → re-touches 001/003/027, gates the *look*
+  of all platform UI (028–037, 010, 013, 015, 021)
 - **001** Platform scaffold & `{data,error}` envelope `[AFK]` ⊣ — · → almost everything
 - **002** Core DB schema + generated types (PRD §10) `[AFK]` ⊣ 001 · → most feature tickets
 - **003** Auth: signup/login + email verification (§4.1, §4.7) `[AFK]` ⊣ 001, 002
@@ -79,18 +82,48 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
   **011** Waitlist, **037** Platform legal — all unblocked by 001. (007 still needs 008.)
 - **003 done** unblocked: **027** Dashboard shell (✓ Slice 1 built), **033** /admin/orders (also 009),
   **010** Onboarding (also 009), **032** Billing (also 004, 025).
-- **027 Slice 1 done** — the dashboard shell + nav now exist, so **028** (Leads tab), **029** (Edit chat),
-  **030** (Assets/Team), **031** (Blog), **032** (Billing) each have a shell to hang their tab on (each still
-  gated by its own other blockers). 027 **Slice 2 (Settings)** is itself a clean next pick (no new blockers).
+- **027 done (both slices)** — the dashboard shell + nav + Site Overview + Settings now exist, so **028**
+  (Leads tab), **029** (Edit chat), **030** (Assets/Team), **031** (Blog), **032** (Billing) each have a
+  shell to hang their tab on (each still gated by its own other blockers).
 - 002 also directly unblocks 006, 014, 023, 028, 031 (per their `⊣` once their other blockers land).
 
 ## In progress
-- **027 — Customer dashboard shell + Site Overview.** **Slice 1 done** (this push). **Slice 2 remaining:**
-  Settings tab — profile/email/password, notification prefs, domain settings, account deletion (30-day
-  grace). Needs a migration (`accounts.deletion_requested_at` + notification-prefs column) + account
-  service + routes. Until then the Settings tab shows the coming-soon placeholder.
+- _(nothing in flight)_
 
 ## Done
+- **00A — Platform design system & visual identity.** Replaced the default-shadcn look (cold slate + generic
+  indigo, flat) with the owner-chosen **warm trust-fintech (Mercury/Ramp) + emerald, light-first, balanced**
+  direction. **Tokens** (`globals.css @theme`): warm stone neutrals, deep emerald `--primary` (AA-safe on
+  white), warm-harmonized semantics, `--radius` 0.75rem, soft warm `--shadow-{xs,sm,card}`. **Type**: Fraunces
+  display serif (headings, via `next/font`) + Hanken Grotesk body — ditched Inter-everywhere for a distinctive,
+  premium pairing. **Primitives**: upgraded Button (emerald, rounded-lg, press/hover motion), Input
+  (rounded-lg, emerald focus), Badge (re-derived AA tints) + a new shared **Card** primitive. **Rollout**:
+  Settings (Slice-1 proof, owner-approved), dashboard shell + sidebar (emerald active pill) + Site Overview
+  (→ `Card`) + loading/error/coming-soon (Slice 2), auth layout + login (Slice 3; landing/health inherit via
+  tokens). Visual-QA: Settings `color-contrast` perfect + best-practices 100; **login a11y 100 / bp 100**;
+  console clean; 390/1280px. 96 tests / typecheck / lint / build green. Temp preview routes (`preview-settings`,
+  `preview-dashboard`) + dummy env + middleware allowance fully torn down. **Scope = platform only**; customer
+  templates (016–019) keep their own design languages. Future platform tickets inherit the system via the
+  tokens + primitives — no per-ticket design work.
+- **027 (Slice 2) — Settings tab (PRD §12.9).** Migration `20260531150000_account_settings.sql` adds
+  `accounts.full_name`, `lead_notification_frequency`, `system_alerts_enabled`, `deletion_requested_at`
+  (existing `accounts_owner` RLS covers them — no policy change). Pure client-safe core
+  `lib/account/settings.ts` (validators + 30-day `deletionState`, 12 unit tests) split from server IO
+  `lib/account/service.ts` (the `next/headers` server client can't be imported by the client form — same
+  pure/IO split as `auth/validation.ts` vs `auth/service.ts`). Email change → `auth/service.ts#changeEmail`
+  (Supabase confirmation to the new inbox, neutral on already-in-use, no enumeration). Routes
+  `/api/account/{profile,notifications,deletion}` (POST + DELETE for cancel) + `/api/auth/change-email`;
+  password reuses `/api/auth/update-password`. UI: server `settings/page.tsx` (+ **read-only** domain card)
+  + one client `SettingsForm` (profile / login-email / password / notifications radios+toggle / danger-zone
+  with two-step confirm + grace-window "Keep my account"). Settings nav flipped `ready:true` (6 stubs left).
+  96 tests green (18 new: 12 settings core + 3 changeEmail + nav/sidebar count updates + 6 settings-form
+  frontend). typecheck/lint/build green. Visual-QA (chrome-devtools temp preview, fully torn down):
+  best-practices **100**, a11y effectively 100 (only `landmark-one-main`, supplied by the shell's `<main>`
+  in production), console clean, 375/1280px, two-step delete confirm verified live. **Domain settings =
+  read-only status + DNS guidance** (the verification re-trigger needs the Vercel API → 025; no fake button).
+  **Account purge job deferred** (needs Inngest 009 + a cron) — Slice 2 records deletion *intent* + grace
+  window only. **Live Supabase read/write deferred** (no Docker — same as 001–003). **027 now fully Done.**
+
 - **027 (Slice 1) — Dashboard shell + nav + Site Overview (PRD §12.1, §12.2, §7.3/§7.6).** Auth-gated
   shell (`dashboard/layout.tsx` → `DashboardShell`: fixed desktop sidebar + mobile slide-over drawer +
   account footer). All 8 §12.1 tabs from one config (`lib/dashboard/nav.ts`, `activeNavKey` longest-prefix

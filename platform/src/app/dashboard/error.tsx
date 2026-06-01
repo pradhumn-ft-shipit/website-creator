@@ -22,8 +22,8 @@ export default function DashboardError({
   }, [error]);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed px-6 py-20 text-center">
-      <span className="bg-destructive/10 text-destructive flex size-12 items-center justify-center rounded-xl">
+    <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-20 text-center">
+      <span className="bg-destructive/10 text-destructive flex size-12 items-center justify-center rounded-2xl">
         <AlertTriangle className="size-5" aria-hidden />
       </span>
       <h2 className="mt-5 text-base font-semibold">Something went wrong</h2>

@@ -89,8 +89,7 @@ export const DASHBOARD_NAV: NavItem[] = [
     label: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
-    ready: false,
-    blockedByTicket: "027 (Settings slice)",
+    ready: true,
   },
 ];
 

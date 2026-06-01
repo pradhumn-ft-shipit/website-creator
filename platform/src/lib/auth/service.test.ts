@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AppError } from "@/lib/api/envelope";
 import {
+  changeEmail,
   requestPasswordReset,
   signInAdvisor,
   signOutAdvisor,
@@ -156,6 +157,45 @@ describe("updatePassword", () => {
     });
     expect(result).toEqual({ status: "updated" });
     expect(updateUser).toHaveBeenCalledWith({ password: "brandnew22" });
+  });
+});
+
+describe("changeEmail", () => {
+  it("validates the new email before calling Supabase", async () => {
+    const updateUser = vi.fn();
+    await expect(
+      changeEmail(fakeClient({ updateUser }), {
+        email: "not-an-email",
+        emailRedirectTo: "x",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  it("sends a confirmation to the new address (change is not immediate)", async () => {
+    const updateUser = vi.fn().mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    const result = await changeEmail(fakeClient({ updateUser }), {
+      email: "new@example.com",
+      emailRedirectTo: "http://localhost:3000/api/auth/callback?next=/dashboard/settings",
+    });
+    expect(result).toEqual({ status: "confirmation_sent" });
+    expect(updateUser).toHaveBeenCalledWith(
+      { email: "new@example.com" },
+      { emailRedirectTo: "http://localhost:3000/api/auth/callback?next=/dashboard/settings" },
+    );
+  });
+
+  it("maps an already-in-use address to a neutral error (no enumeration)", async () => {
+    const updateUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { message: "Email address already registered", status: 422 },
+    });
+    await expect(
+      changeEmail(fakeClient({ updateUser }), {
+        email: "taken@example.com",
+        emailRedirectTo: "x",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input", status: 422 });
   });
 });
 

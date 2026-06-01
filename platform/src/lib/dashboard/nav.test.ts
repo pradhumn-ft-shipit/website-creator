@@ -16,9 +16,9 @@ describe("DASHBOARD_NAV", () => {
     ]);
   });
 
-  it("marks only Site Overview ready in this slice; the rest are coming-soon", () => {
+  it("marks Site Overview and Settings ready; the rest are coming-soon", () => {
     const ready = DASHBOARD_NAV.filter((i) => i.ready).map((i) => i.key);
-    expect(ready).toEqual(["overview"]);
+    expect(ready).toEqual(["overview", "settings"]);
     // every not-ready item names the ticket that will deliver it
     for (const item of DASHBOARD_NAV.filter((i) => !i.ready)) {
       expect(item.blockedByTicket).toBeTruthy();

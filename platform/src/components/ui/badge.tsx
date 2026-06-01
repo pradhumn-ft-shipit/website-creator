@@ -10,12 +10,13 @@ const badgeVariants = cva(
       variant: {
         // Tinted pills: background is a soft wash of the hue, text is a darker
         // shade of the SAME hue so each clears WCAG AA (4.5:1) on its tint —
-        // the bright semantic tokens (success L0.62 / warning L0.75) are too
-        // light to use as text on a light wash. Fixed oklch (v1 is light-only).
-        default: "border-transparent bg-primary/10 text-[oklch(0.45_0.2_277)]",
+        // the brand/semantic tokens are too light to use as text on a light
+        // wash. Fixed-oklch text (v1 is light-only); re-derived for the 00A
+        // warm-stone + emerald palette.
+        default: "border-transparent bg-primary/12 text-[oklch(0.4_0.088_166)]",
         neutral: "border-transparent bg-muted text-foreground/70",
-        success: "border-transparent bg-success/15 text-[oklch(0.43_0.14_145)]",
-        warning: "border-transparent bg-warning/20 text-[oklch(0.46_0.1_75)]",
+        success: "border-transparent bg-success/15 text-[oklch(0.4_0.1_150)]",
+        warning: "border-transparent bg-warning/22 text-[oklch(0.44_0.095_68)]",
         outline: "text-foreground",
       },
     },

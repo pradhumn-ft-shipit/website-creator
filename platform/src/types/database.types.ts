@@ -54,6 +54,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          full_name: string | null;
           firm_name: string | null;
           industry: string;
           sub_industry: string | null;
@@ -63,11 +64,15 @@ export type Database = {
           stripe_subscription_id: string | null;
           subscription_status: string | null;
           plan: string | null;
+          lead_notification_frequency: string;
+          system_alerts_enabled: boolean;
+          deletion_requested_at: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
+          full_name?: string | null;
           firm_name?: string | null;
           industry?: string;
           sub_industry?: string | null;
@@ -77,11 +82,15 @@ export type Database = {
           stripe_subscription_id?: string | null;
           subscription_status?: string | null;
           plan?: string | null;
+          lead_notification_frequency?: string;
+          system_alerts_enabled?: boolean;
+          deletion_requested_at?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
+          full_name?: string | null;
           firm_name?: string | null;
           industry?: string;
           sub_industry?: string | null;
@@ -91,6 +100,9 @@ export type Database = {
           stripe_subscription_id?: string | null;
           subscription_status?: string | null;
           plan?: string | null;
+          lead_notification_frequency?: string;
+          system_alerts_enabled?: boolean;
+          deletion_requested_at?: string | null;
           created_at?: string;
         };
         Relationships: [

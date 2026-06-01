@@ -8,6 +8,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { ensureHttps, type SiteOverview } from "@/lib/dashboard/overview";
 
 const DOMAIN_STATUS: Record<
@@ -36,13 +37,13 @@ function StatCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-card rounded-xl border p-5 shadow-sm">
+    <Card className="p-5">
       <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
         <Icon className="size-4" aria-hidden />
         {label}
       </div>
       <div className="mt-3">{children}</div>
-    </div>
+    </Card>
   );
 }
 
@@ -59,8 +60,8 @@ export function SiteOverviewView({
 }) {
   if (!overview) {
     return (
-      <div className="bg-card/40 flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed px-6 py-20 text-center">
-        <span className="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl">
+      <div className="bg-card/40 flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-20 text-center">
+        <span className="bg-accent text-accent-foreground flex size-12 items-center justify-center rounded-2xl">
           <Rocket className="size-5" aria-hidden />
         </span>
         <h2 className="mt-5 text-base font-semibold">
@@ -80,7 +81,7 @@ export function SiteOverviewView({
   return (
     <div className="flex flex-col gap-6">
       {/* Live site banner */}
-      <div className="bg-card rounded-xl border p-6 shadow-sm">
+      <Card className="p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
@@ -119,7 +120,7 @@ export function SiteOverviewView({
             </Button>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Detail cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

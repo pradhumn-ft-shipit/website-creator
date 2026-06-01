@@ -43,3 +43,6 @@ info-for front-end sikll/
 
 # Type generation output (regenerated via npm run gen:types)
 # platform/src/types/database.types.ts  # keep tracked; uncomment if generated-only
+
+# Claude Code worktrees, agent transcripts, local task state
+.claude/

@@ -1,81 +1,89 @@
 @import "tailwindcss";
 
 /*
-  WRI platform design tokens — PRD §7.3 (Linear/Vercel/Stripe feel).
-  Neutral grayscale + one brand accent (indigo) + semantic colors.
-  Dark mode is optional in v1 (expected v1.5); variables are wired now so
-  flipping it on later is a one-line `dark` class on <html>.
+  WRI platform design system — ticket 00A.
+  Direction: warm trust-fintech (Mercury/Ramp), emerald accent, light-first.
+  Warm STONE neutrals (a hint of yellow in the hue, very low chroma) instead of
+  cold slate; a deep EMERALD as the single brand accent; soft, warm-tinted
+  elevation over hard borders; generous radius. Dark vars are kept stubbed but
+  light is the only v1 deliverable.
   Token names follow the shadcn/ui convention so copied components map cleanly.
 */
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  /* Neutral grayscale */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.205 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.205 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  /* Warm stone neutrals */
+  --background: oklch(0.985 0.006 83);
+  --foreground: oklch(0.26 0.012 62);
+  --card: oklch(0.998 0.004 83);
+  --card-foreground: oklch(0.26 0.012 62);
+  --popover: oklch(0.998 0.004 83);
+  --popover-foreground: oklch(0.26 0.012 62);
+  --muted: oklch(0.955 0.009 83);
+  --muted-foreground: oklch(0.505 0.016 66);
+  --border: oklch(0.905 0.01 80);
+  --input: oklch(0.9 0.011 80);
 
-  /* Brand accent — indigo */
-  --primary: oklch(0.51 0.23 277);
-  --primary-foreground: oklch(0.985 0 0);
-  --accent: oklch(0.97 0.02 277);
-  --accent-foreground: oklch(0.51 0.23 277);
-  --ring: oklch(0.51 0.23 277);
+  /* Brand accent — deep emerald (darkened so white text clears WCAG AA) */
+  --primary: oklch(0.48 0.102 166);
+  --primary-foreground: oklch(0.99 0.012 160);
+  --accent: oklch(0.955 0.026 168);
+  --accent-foreground: oklch(0.4 0.088 166);
+  --ring: oklch(0.55 0.1 166);
 
   /* Secondary surface */
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.955 0.009 83);
+  --secondary-foreground: oklch(0.26 0.012 62);
 
-  /* Semantic colors */
-  --success: oklch(0.62 0.17 145);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.75 0.16 75);
-  --warning-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
+  /* Semantic colors — warm-harmonized, kept distinct from the emerald primary */
+  --success: oklch(0.52 0.12 150);
+  --success-foreground: oklch(0.99 0.012 150);
+  --warning: oklch(0.7 0.13 70);
+  --warning-foreground: oklch(0.26 0.02 62);
+  --destructive: oklch(0.505 0.196 27);
+  --destructive-foreground: oklch(0.99 0.01 60);
+
+  /* Soft, warm-tinted elevation */
+  --shadow-xs: 0 1px 2px 0 oklch(0.3 0.02 70 / 0.05);
+  --shadow-sm: 0 1px 2px oklch(0.3 0.02 70 / 0.06), 0 1px 1px oklch(0.3 0.02 70 / 0.04);
+  --shadow-card: 0 1px 3px oklch(0.3 0.02 70 / 0.04), 0 8px 20px -6px oklch(0.3 0.02 70 / 0.08);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --background: oklch(0.18 0.008 70);
+  --foreground: oklch(0.97 0.005 83);
+  --card: oklch(0.22 0.009 70);
+  --card-foreground: oklch(0.97 0.005 83);
+  --popover: oklch(0.22 0.009 70);
+  --popover-foreground: oklch(0.97 0.005 83);
+  --muted: oklch(0.27 0.009 70);
+  --muted-foreground: oklch(0.71 0.012 75);
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --input: oklch(1 0 0 / 14%);
 
-  --primary: oklch(0.62 0.2 277);
-  --primary-foreground: oklch(0.985 0 0);
-  --accent: oklch(0.269 0.05 277);
-  --accent-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.62 0.2 277);
+  --primary: oklch(0.62 0.11 166);
+  --primary-foreground: oklch(0.16 0.01 70);
+  --accent: oklch(0.3 0.04 168);
+  --accent-foreground: oklch(0.9 0.05 168);
+  --ring: oklch(0.62 0.11 166);
 
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.27 0.009 70);
+  --secondary-foreground: oklch(0.97 0.005 83);
 
-  --success: oklch(0.68 0.16 145);
-  --success-foreground: oklch(0.145 0 0);
-  --warning: oklch(0.8 0.16 75);
-  --warning-foreground: oklch(0.145 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.65 0.13 150);
+  --success-foreground: oklch(0.16 0.01 70);
+  --warning: oklch(0.78 0.13 70);
+  --warning-foreground: oklch(0.16 0.01 70);
+  --destructive: oklch(0.62 0.19 27);
+  --destructive-foreground: oklch(0.99 0.01 60);
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-serif, Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -107,6 +115,10 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-card: var(--shadow-card);
 }
 
 @layer base {
@@ -120,5 +132,14 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Headings carry the Fraunces display serif — the editorial / established
+     tone. Tight tracking + warm ink keeps them refined, not bookish. */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.011em;
+    font-weight: 560;
   }
 }

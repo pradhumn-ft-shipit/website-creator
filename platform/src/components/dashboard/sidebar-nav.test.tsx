@@ -30,8 +30,8 @@ describe("SidebarNav", () => {
   it("marks not-ready tabs with a Soon badge but Site Overview without one", () => {
     pathname.value = "/dashboard";
     render(<SidebarNav />);
-    // 7 of 8 tabs are coming-soon in this slice
-    expect(screen.getAllByText("Soon")).toHaveLength(7);
+    // 6 of 8 tabs are coming-soon now (Site Overview + Settings are live)
+    expect(screen.getAllByText("Soon")).toHaveLength(6);
     const overview = screen.getByRole("link", { name: /Site Overview/ });
     expect(overview).not.toHaveTextContent("Soon");
   });

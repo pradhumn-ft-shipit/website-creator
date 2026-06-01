@@ -349,3 +349,103 @@ seeded `sites` row surfaces the live URL + correct domain badge.
 
 **Green this session:** `npm test` (75 — +24 for nav/overview logic + nav/site-overview component tests),
 `npm run typecheck`, `npm run lint`, `npm run build`.
+
+---
+
+## 2026-05-31 — 027 Slice 2: Settings tab (PRD §12.9)
+
+- **Pure/IO split forced by the client boundary.** `SettingsForm` is a client component and needs the
+  `AccountSettings` type + `LEAD_FREQUENCIES`; importing them from a module that also pulls
+  `lib/supabase/server` (which imports `next/headers`) breaks the Turbopack build ("only available in
+  Server Components"). So `lib/account/settings.ts` is the **client-safe core** (types, validators,
+  `deletionState`) and `lib/account/service.ts` is the **server IO** (Supabase reads/writes). Same shape as
+  `auth/validation.ts` (pure) vs `auth/service.ts` (IO). Routes import IO from `service.ts`; the form imports
+  types/constants from `settings.ts`.
+- **Email change is an auth concern, not an `accounts` write.** `changeEmail` lives in `auth/service.ts` and
+  calls Supabase `auth.updateUser({ email }, { emailRedirectTo })`, which emails a confirmation to the *new*
+  address — the change only lands on click (back through `/api/auth/callback?next=/dashboard/settings`). The
+  old email stays active until then, so the UI says "confirmation sent", never "changed". 422 (already in
+  use) maps to a neutral message — no account enumeration (§4.7). Password change reuses the existing
+  `/api/auth/update-password`; no new route.
+- **Account deletion records intent only; the purge is deferred.** `requestAccountDeletion` stamps
+  `deletion_requested_at` (idempotent — a second request keeps the original timestamp via an
+  `is('deletion_requested_at', null)` guard, so a re-click can't extend the window); `deletionState` derives
+  the 30-day grace end + whole-days-remaining (rounds **up** so it hits 0 only at true expiry). The actual
+  data purge needs Inngest (009) + a cron — out of scope here. Distinct from subscription cancellation (§12.9).
+  UI danger-zone uses a **two-step inline confirm** (no modal dependency); pending state shows the grace
+  banner + "Keep my account" (DELETE → cancel).
+- **Domain settings shipped read-only.** §12.9 lists "re-trigger DNS verification", but that needs the Vercel
+  API (ticket 025). Rather than a button that does nothing, the domain card shows status + DNS guidance only;
+  the re-verify action joins 025. Reused `getSiteOverview`/`deriveDomainStatus` for the status read.
+- **No RLS change.** All four new columns sit on `accounts`, already covered by the `accounts_owner` FOR ALL
+  policy (`user_id = auth.uid()`); the IO `.eq('user_id', uid)` filters just narrow to the single v1 row.
+- **Visual-QA recipe reused.** Same temp-public-preview-route + dummy `.env.local` approach as Slice 1
+  (route `/preview-settings`, the underscore-prefix `_preview-settings` is a *private folder* in the App
+  Router and won't route — renamed). Fully torn down. Result: best-practices 100, a11y 98 in the bare preview
+  — the only deduction is `landmark-one-main`, which the dashboard shell's `<main>` supplies in production
+  (so effectively 100); console clean; 375/1280px; two-step delete confirm exercised live.
+
+**Deferred (no Docker/Supabase, same as 001–003):** live read/write of the new `accounts` columns through
+`service.ts`. Logic is proven via `settings.test.ts` (12) + `settings-form.test.tsx` (6) + the mock preview;
+the live round-trip joins the catch-up list (sign in → Settings → edit profile/notifications → request +
+cancel deletion → change email confirmation).
+
+**Green this session:** `npm test` (96 — +21 over Slice 1's 75), `npm run typecheck`, `npm run lint`,
+`npm run build`. **027 now fully Done (both slices).**
+
+---
+
+## 2026-05-31 — 00A: Platform design direction (owner-decided)
+
+Owner flagged the shipped UI as generic/low-trust (default shadcn: cold slate + generic indigo, flat). Ran a
+4-question direction round; decisions:
+
+- **Aesthetic = Mercury/Ramp** (warm trust-fintech: calm, rounded, conservative, soft layered depth) — chosen
+  over Stripe-grade, Linear, and Vercel/Geist. Build it as a distinctive WRI identity at that craft bar, not a
+  clone of any one product.
+- **Accent = emerald / teal** — over indigo/violet, deep blue, and near-neutral. Money/growth/trust, and
+  deliberately off the indigo-fintech default.
+- **Mode = light-first only** for v1 (dark deferred to v1.5; keep vars stubbed).
+- **Density = balanced** (roomy empty/onboarding, tighter on data views).
+
+**Why it's a foundation ticket, not a Settings tweak:** the blandness is systemic (no design system was ever
+defined — 001 just used shadcn defaults), so 00A defines tokens + primitives once and re-skins 001/003/027,
+gating the look of all future platform UI. **Scope = platform only**; the three customer templates (016–019)
+keep their own distinct Trust/Modern/Boutique design languages.
+
+**Execution:** Slice 1 = warm-neutral + emerald token set in `globals.css @theme` + upgraded Button/Input/
+Label/Badge + a shared `Card` primitive + re-skin Settings as the proof on the `:5500` preview for owner
+sign-off (HIL); Slices 2–3 roll it across 027 then 003/001 (AFK). Must preserve the §7 WCAG-AA badge-contrast
+fix under the new palette, and resolve the primary(emerald)↔success(green) collision by lightness + usage.
+
+---
+
+## 2026-05-31 — 00A: Platform design system built (Slices 1–3)
+
+Owner approved the Mercury/Ramp + emerald direction on the Slice-1 Settings proof ("yeah looks better"), then
+chose to finish the rollout before new feature tickets. Built and rolled out:
+
+- **Tokens (`globals.css @theme`) are the single source.** Warm stone neutrals (low-chroma ~hue-80) replace
+  cold slate; `--primary` = deep emerald **darkened to L0.48** so white button text clears WCAG AA (a brighter
+  emerald failed contrast); semantics re-tuned warm; `--radius` 0.75rem; soft warm-tinted `--shadow-{xs,sm,card}`.
+- **Type pairing = Fraunces (display serif) + Hanken Grotesk (body)** via `next/font/google` — the
+  frontend-design skill calls for distinctive type over Inter-everywhere; a soft serif on headings reads
+  "established/editorial-finance," fitting the regulated audience. Headings get the serif via an `@layer base`
+  `h1,h2,h3` rule, so every screen inherits it.
+- **`next/font` + token changes need a dev-server restart, not just hot-reload.** First reload still showed
+  indigo buttons / sans headings; killing the dev server + `rm -rf .next` + restart applied them. Worth
+  remembering for future theme work.
+- **New shared `Card` primitive** consolidates the hand-rolled `bg-card rounded-xl border shadow-sm` that
+  Settings and Site Overview each duplicated → `rounded-2xl shadow-card`, `tone="danger"` for destructive
+  sections. Sidebar active state uses an **emerald `bg-primary/10` pill** (the plain `bg-accent` wash was too
+  subtle on the warm card to read as selected).
+- **Auto-adoption model (answered for the owner):** global tokens + the shared primitives mean future platform
+  tickets inherit the look for free *as long as they build on the primitives* — now an enforced 00A acceptance
+  rule, not a convention. Only pre-00A hand-rolled markup needed back-fill (the Slice 2–3 work).
+- **Scope = platform only.** Customer templates (016–019) keep their distinct Trust/Modern/Boutique languages.
+
+Visual-QA via the same temp-preview recipe (added `preview-dashboard` alongside `preview-settings`, broadened
+the middleware allowance to `/preview*`, dummy `.env.local`) — all fully torn down; tree holds only real files.
+Results: Settings `color-contrast` perfect + bp 100; **login a11y 100 / bp 100**; console clean; 390/1280px.
+
+**Green:** `npm test` (96), `typecheck`, `lint`, `build`. **00A Done. Light-only for v1; dark vars stubbed (v1.5).**

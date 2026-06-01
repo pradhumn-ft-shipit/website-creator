@@ -16,7 +16,7 @@ function Brand() {
       href="/dashboard"
       className="flex items-center gap-2 text-sm font-semibold tracking-tight"
     >
-      <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-md">
+      <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
         <ShieldCheck className="size-4" aria-hidden />
       </span>
       WRI

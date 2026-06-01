@@ -15,8 +15,8 @@ export function ComingSoon({
   description: string;
 }) {
   return (
-    <div className="bg-card/40 flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed px-6 py-20 text-center">
-      <span className="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl">
+    <div className="bg-card/40 flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-20 text-center">
+      <span className="bg-accent text-accent-foreground flex size-12 items-center justify-center rounded-2xl">
         <Icon className="size-5" aria-hidden />
       </span>
       <h2 className="mt-5 text-base font-semibold">{title} is coming soon</h2>
