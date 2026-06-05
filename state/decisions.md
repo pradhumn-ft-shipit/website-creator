@@ -519,3 +519,439 @@ Built parallel with 008 in an isolated git worktree; integrated back onto `found
   walk to `dns_monitoring`; force a step throw to see an `admin_alerts` row written. Then flip that acceptance box.
 
 **Green:** `npm test` (164), `typecheck`, `lint`, `build`. **009 Done.**
+
+## 2026-06-01 — Review fixes 008/009/00A (state/reviews/2026-06-01-008-009-00A.md)
+
+Picked up the six findings from the fresh-context review of 008 + 009 + 00A. The cluster is in the
+cost guard — the stated hard guardrail (<$2/site) — so those were weighted heaviest.
+
+- **#1 (HIGH) — cost guard now counts failed/over-cap/repair attempts.** `GeminiClient.generateJSON`
+  recorded token spend only on the success path, so an `assertWithinOutputCap` throw or an
+  all-repairs-fail `SchemaValidationError` dropped every billed attempt — and the failure/repair loop
+  is exactly where per-site cost balloons. Split `CostAccumulator.record` into **`recordUsage` (always,
+  per attempt)** + **`recordImage` (success-only)**; the client now calls `recordUsage` immediately after
+  `readUsage`, *before* the output-cap and parse checks that can throw. `record(model,usage,isImage)` is
+  kept as a back-compat convenience (= `recordUsage` + optional `recordImage`). Image quota is consumed
+  only by a *successful* image call, so a failed image bills tokens but doesn't burn one of the 3 slots.
+- **#2 (MEDIUM) — chose enforcement-in-the-client (option a), not caller contract.** `assertCanSpend` /
+  `assertCanGenerateImage` had zero callers — the dollar + image caps were left to the (still-stubbed)
+  pipeline. The client is documented as "the one place every AI call goes through… enforces budgets," so
+  the guard belongs there where it can't be forgotten downstream. `generateJSON` now calls
+  `assertCanGenerateImage()` once before the loop (4th image never dispatches) and `assertCanSpend(worstCase)`
+  before **every** dispatch incl. repairs. **Worst-case pre-estimate = known input + the operation's hard
+  `capOutput`** (the most one call can produce, since `assertWithinOutputCap` rejects more) → the guard
+  provably never lets actual spend exceed the cap. Headroom is large (full-site worst case ≈ $0.20, image
+  ≈ $0.06, vs the $2 cap) so this never false-halts a legitimate site. Tests prove a site halts at the
+  cap **before** the SDK boundary is called (nothing billed).
+- **#5 (LOW, folded in) — dropped the throwaway accumulator in `estimate()`.** `generateJSON` now computes
+  the returned `costUsd` via the already-exported `estimateCostUsd(model, aggregate)`; deleted the private
+  `estimate()` that spun up a `new CostAccumulator(Infinity)` per call.
+- **#3 (MEDIUM) — deletion re-read surfaces DB errors.** `requestAccountDeletion`'s already-pending branch
+  used `.single()` and swallowed `{ error }`, so a transient DB error collapsed into the misleading
+  "Failed to schedule account deletion". Now `.maybeSingle()` + `throw error` on failure, matching
+  `getAccountSettings`.
+- **#4 (LOW) — `AccountRow` aligned to the migration.** `lead_notification_frequency` + `system_alerts_enabled`
+  are `NOT NULL DEFAULT` in `20260531150000_account_settings.sql`; typed them non-null (the `??` fallbacks
+  stay as defense-in-depth). Kept the hand-rolled shadow type rather than wiring the generated DB types
+  (gen:types still pending Docker).
+- **#6 (NOTE) — no behavior change, made the obligation greppable.** Added `TODO(020/006)` at the
+  `layer3Required({ verdict:"pass", siteIndex:0 })` stub so the downstream ticket that owns the Layer-2
+  outcome threads the real verdict + siteIndex (otherwise every post-50 passing site keeps routing through
+  manual review). Tracked here + in plan.md.
+
+**Not done:** no unit test for #3 — `account/service.ts` IO creates its own Supabase client (no injection
+seam like `auth/service.ts`), and this module has no Supabase-mock harness yet (live read/write still
+deferred, no Docker). The fix is a 1:1 consistency change with the proven `getAccountSettings` pattern;
+verified by typecheck + the cost-guard tests carry the review's test weight.
+
+**Green:** `npm test` (173, +9 new: 6 client cost-guard + 3 cost split), `typecheck`, `lint`, `build`.
+
+---
+
+## 2026-06-01 — 033 (Slice 1) Admin /admin/orders: gate + queue + retry (PRD §11.1, §13.2, §13.4)
+
+First admin ticket — establishes the admin foundation 034–036 hang off. Built as Slice 1
+(gate + shell + order list + Retry/Dismiss); the order **detail view** is Slice 2.
+
+- **Admin identity = env-var email allowlist (`ADMIN_EMAILS`), owner-decided.** No admin/role
+  concept existed; asked the owner (tech + business framing) and they picked the allowlist over a
+  DB `users.is_admin` column. Rationale: internal-only tool, tiny alpha team, no admin-management UI
+  in v1 scope → zero schema churn, deny-by-default, no bootstrap problem. Trade-off accepted: adding/
+  removing an admin is an env edit + redeploy (no self-service). Centralized in `lib/admin/auth.ts`
+  as a pure `isAdminEmail(email, allowlist)` (exhaustively unit-tested) + thin IO wrappers
+  `requireAdmin()` (pages: unauth→`/login`, non-admin→`notFound()` = **least disclosure**, a regular
+  advisor never learns `/admin` exists) and `assertAdmin()` (API: `AppError` 403). Swapping to a DB
+  role later only touches `isAdminEmail`'s call sites. **TBD: populate `ADMIN_EMAILS` before deploy.**
+- **Two layers of gating, no proxy change.** The existing proxy already bounces unauthenticated users
+  off any non-public path → `/login`; the *admin* check (authenticated-but-not-admin) lives in the
+  `/admin` layout (`requireAdmin`) + each `/api/admin/*` route (`assertAdmin`). `/api/*` stays
+  proxy-pass-through and self-gates. No new env var leaks client-side (`ADMIN_EMAILS` is server-only).
+- **Sliced (the full ticket is well past the 5-file guardrail, same as 027).** Slice 1 = gate + shell +
+  list + actions (a complete, visible, testable vertical slice that satisfies 4/5 acceptance criteria
+  and unblocks 034–036's admin-gate dependency). Slice 2 = the detail view, which needs its own schema
+  (see below).
+- **`lib/admin/orders.ts` is one deep module** (read + classify + recover), split pure-core/IO like the
+  rest of the repo. Pure: `stateTone`/`stateGroup` (failure→danger, review→warning, complete→success,
+  else in-progress/info), `humanizeStatus`, `formatDuration`, and `shapeAdminOrders` (shape+filter+sort,
+  fully unit-tested with injected `nowMs`). IO: `listAdminOrders` reads via the **service-role client**
+  (orders/admin_alerts are RLS-internal — deny-by-default to the cookie client) embedding
+  `accounts(firm_name, users(email))` + `admin_alerts(...)`. Filtering is in-memory over the shaped rows
+  (alpha volume ≤50 sites); push to SQL if volume grows.
+- **"Driven by admin_alerts."** The list is the full `orders` queue (§11.1 shows all orders + a
+  "last failure (if any)" column), *enriched* with each order's unresolved `order_failed` alert — that
+  alert is what makes a row actionable (Retry/Dismiss) and powers the "Needs attention" filter. So the
+  actionable queue is alert-driven while the table still shows everything.
+- **Retry semantics (v1 = restart, not resume).** 009's pipeline is still a single
+  `order.created`→top-of-pipeline walk with **stub** steps, and failure states are terminal in the
+  forward-only transition table (`transitionOrder` can't exit them). So Retry is a deliberate admin
+  **reset** (service-role): status→`payment_received`, `state_machine_position`→"0", clear
+  `failure_reason`, bump `retry_count`, resolve the open `order_failed` alert(s), then re-send
+  `order.created`. The injected `send`/`client` make it unit-testable; `retryOrderById`/`dismissOrderAlert`
+  wire the real Inngest client. **TODO(012–025):** once steps are real + idempotent, resume from the
+  failed step (`alert.step`) instead of restarting — marked in `orders.ts`. Retry guards on
+  `isFailureState` (409 otherwise).
+- **"Manually intervene" / order-level "Cancel" → Dismiss.** §18.1 has no `cancelled` order state and
+  there's no clean target, so order-level cancel is out of scope; subscription cancel is 032. The two
+  recovery actions are **Retry** (re-run) and **Dismiss** (resolve the alert without re-running, for
+  out-of-band fixes / false alarms). Both are confirmed via an inline two-step (no modal dep — same
+  pattern as 027's danger-zone).
+- **Time-in-state is approximate (schema-free, like 027 Slice 1).** We don't persist a per-transition
+  timestamp. The column measures from the failure alert when stuck on a failure (**accurate for the rows
+  admins act on**) and from `created_at` otherwise. **Slice 2 adds an `order_state_events` history table**
+  (written by `transitionOrder` going forward) that powers both the detail view's "state-machine history"
+  AND precise time-in-current-state — chose to defer it there rather than add a soon-superseded
+  `status_changed_at` column now.
+- **Badge gained a `destructive` (red) variant** for the failed state — AA-safe dark-red text on a light
+  `bg-destructive/12` wash (matches the 00A fixed-oklch badge pattern; v1 light-only). Reused by 034's
+  violations queue. The admin shell's disabled "Soon" section labels were initially `text-muted-foreground/60`
+  (2.51:1 — Lighthouse caught it); bumped to the dashboard's proven AA treatment (`text-muted-foreground`
+  label + `text-foreground/75` pill) → a11y 96 → **100**.
+- **Admin console = its own chrome** (`components/admin/shell.tsx`): a dense, desktop-first top-nav across
+  the §11 surfaces (Orders live; Compliance/Leads/Email-log/Health are "Soon", named for 034–036), distinct
+  from the advisor dashboard's sidebar but on the same 00A tokens/primitives. §7.10 allows lower-fidelity
+  admin UI; never broken.
+- **Visual-QA via the temp-preview recipe** (same as 027/00A: dummy `.env.local` + `/preview-admin` public
+  route rendering the table with mock data + temp middleware allowance — **all fully torn down**, tree holds
+  only real 033 files). Result: Lighthouse **a11y 100 / best-practices 100**, console clean, desktop 1280px +
+  mobile 375px (header collapses, table scrolls), Retry two-step confirm exercised live.
+- **Deferred (`[~]`, no Docker/Inngest this session — same as 001–009):** live admin read through
+  `listAdminOrders` (needs Supabase + `SUPABASE_SERVICE_ROLE_KEY`) and a live retry round-trip (needs the
+  Inngest dev server to observe the re-enqueued `order.created`). Logic is proven via `orders.test.ts`
+  (shaping/filter + retry/dismiss with injected client+sender) + the frontend test + the mock preview.
+  **Catch-up:** set `ADMIN_EMAILS` + real Supabase env, sign in as an allowlisted user → `/admin/orders`
+  shows the queue; seed a `build_failed` order + `order_failed` alert → Retry resets it and (with
+  `npx inngest-cli dev` running) re-fires the pipeline.
+
+**Green:** `npm test` (201, +28: 9 auth + 15 orders/actions + 7 frontend... 28 total new), `typecheck`,
+`lint`, `build` (all 4 admin routes compile dynamic). **033 Slice 1 done; Slice 2 (detail view) next.**
+
+---
+
+## 2026-06-01 — 033 (Slice 2) Admin order detail view (PRD §11.1) — 033 FULLY DONE
+
+Closes the last open 033 acceptance criterion: `/admin/orders/[id]` shows full state-machine
+history, intake summary, generated-content preview, compliance violations, and deployment logs,
+plus Retry/Dismiss. Builds on Slice 1's gate/shell/queue/actions.
+
+- **New `order_state_events` table (the one real schema decision, per the handoff).** 009's
+  `transitionOrder` only overwrites `orders.status` + `state_machine_position` — it keeps NO
+  history, so "full state-machine history" needed an append-only audit table. Migration
+  `20260601120000_order_state_events.sql`: `(id, order_id→orders, from_status, to_status,
+  occurred_at, note)`, indexed `(order_id, occurred_at)`. **Internal/operational table** — RLS
+  enabled, NO policy (service-role only), same posture as `admin_alerts`. **Deliberately NOT a
+  §10.1 core table:** it is added in a *separate* migration and **excluded from `PUBLIC_TABLES`**
+  (the health-probe / §10.1 list stays pristine at 17 — the lockstep test `PUBLIC_TABLES ===
+  EXPECTED_TABLES` would otherwise break, and an audit log isn't part of the core data model). It
+  IS added to `database.types.ts` so the service-role queries are typed, and gets its own
+  `schema.test.ts` describe block (creates table / indexed / RLS-on / policy-less / not in
+  PUBLIC_TABLES). `gen:types` still pending Docker — hand-authored to match, like the rest of 002.
+- **History is written best-effort, never blocking the transition.** New `recordStateEvent`
+  (exported from `lib/orders/transitions.ts`) inserts one row after every successful
+  `transitionOrder` persist (`from`→`next`), and is also called by `retryOrder` for the admin
+  reset (`from = failed status`, `to = payment_received`, `note = 'admin retry'`) since that reset
+  bypasses the forward-only machine. It **swallows its own write errors**: the order's status is
+  already persisted and history is an audit aid, not the source of truth — same non-masking posture
+  as `escalateOrderFailure`. So a history-write failure can never fail (or roll back) a transition.
+- **Precise time-in-state, backward-compatibly upgraded.** `shapeOne` (the Slice-1 queue shaper)
+  now prefers the **latest `order_state_events.occurred_at`** as the "entered current state"
+  reference for time-in-state — more accurate than Slice 1's alert/created_at approximation. The
+  upgrade is **additive**: rows with no events (orders predating the table, or none recorded yet)
+  fall through to the old logic, so every Slice-1 queue test stays green unchanged. `listAdminOrders`
+  embeds `order_state_events(occurred_at)` to power it.
+- **`getAdminOrderDetail(orderId)` = one embedded service-role read.** Pulls the order + firm +
+  owner email + the account's `sites → deployments` + `intake_data` + `generated_content` +
+  `compliance_violations` + `order_state_events` + `admin_alerts` in a single Supabase nested
+  select, `.maybeSingle()` → `null` for an unknown id (→ `notFound()`). Pure shaping
+  (`shapeOrderDetail` + `buildStateHistory`) is fully unit-tested with injected `nowMs`, same
+  pure-core/IO split as the rest of `orders.ts`.
+- **`buildStateHistory` anchors the timeline at order creation.** The order's first state is the
+  first event's `from_status` (its status before any recorded transition), placed at `created_at`;
+  each event marks entry into the next state; each entry's duration runs to the next entry, and the
+  current (last) entry runs to `now`. With no events, a single current entry from creation. This
+  keeps the timeline meaningful even before/without recorded transitions.
+- **Content/intake are summarized, not dumped.** Generated content shows page/section/version/
+  confidence/ruleset/approval (newest version first), NOT raw `content_json` (huge + not useful in
+  a control room). Intake shows the URL + booleans (scrape captured? structured captured?) + doc
+  count, not the raw scrape/intake JSON. Violations show severity (color-coded: high→destructive,
+  medium→warning, low→neutral) + field path + description + resolved state. Deploy logs show
+  status/version/trigger/compliance/Vercel-id, newest first.
+- **`OrderActions` extracted to its own client component** (`components/admin/order-actions.tsx`)
+  and reused by BOTH the queue table and the detail header — identical Retry/Dismiss two-step
+  confirm in both places, no duplication. The table now takes `{orderId, retriable, hasAlert}`
+  props instead of the whole `AdminOrder`. Row **Order-id cell → `/admin/orders/[id]`** link added.
+- **Scope note (5-file guardrail):** this slice spans ~12 files (schema + types + test + 009 touch
+  + test + data layer + test + page + not-found + detail component + extracted actions + table +
+  frontend test) — well past the literal guardrail, but it is **one coherent vertical slice** (a
+  single screen), same as Slice 1 (9+) and 027. The handoff offered a 2a/2b split; I kept it whole
+  because the page scaffold + schema + data layer must all land together for *any* detail content to
+  render, and a half-built screen is worse to review than a complete one. Kept modular (deep detail
+  component with internal sections; extracted shared actions) and the change is additive/low-risk to
+  the green Slice-1 queue (no existing queue test rewritten).
+- **Visual-QA via the same temp-preview recipe** (dummy `.env.local` + `/preview-order-detail`
+  public route rendering `OrderDetail` with a failed-order mock + temp `/preview` middleware
+  allowance — **all fully torn down**, tree holds only real 033 files). Result: Lighthouse
+  **a11y 100 / best-practices 100**, console clean, desktop 1280px + mobile 375px (header stacks,
+  tables horizontal-scroll within their cards — never broken). Retry two-step confirm covered by
+  the frontend test.
+- **Deferred (`[~]`, no Docker/Inngest — same as 001–009):** live embedded read through
+  `getAdminOrderDetail` + a live transition writing real `order_state_events` rows. Proven via the
+  pure shaping/history tests + the frontend test + the mock preview. **Catch-up:** `db push` the new
+  migration, run a pipeline (or a manual `transitionOrder`) to populate events, open
+  `/admin/orders/[id]` as an allowlisted admin. Queue time-in-state then shows the precise value.
+
+**Green:** `npm test` (**225**, +24 over Slice 1: 4 schema + 1 transition + 14 orders detail/history/
+retry-event/time-in-state + 5 frontend), `typecheck`, `lint`, `build` (`/admin/orders/[id]` compiles
+dynamic). **033 FULLY DONE** (all 5 acceptance criteria `[x]`).
+
+---
+
+## 2026-06-01 — 007 Prompt + eval harness (PRD §8.2, §8.6)
+
+**Context:** Picked 007 as the next AFK over 004 (more downstream leverage) and 011 (leaf). Reasoning: 007 is
+the §8.2.8 *gate* (dev-infra tier > feature tier in CLAUDE.md prioritisation) and is 100% verifiable offline this
+session, whereas all five of 004's acceptance criteria need a live Resend key + verified domain we don't have
+(004 would ship ~entirely deferred — better picked alongside its domain prereq + 028). 007 is the successor to
+008: **008 client → 007 prompts+evals → 020 generation.**
+
+- **Harness lives in `platform/`, not `compliance/`** (divergence from the CLAUDE.md Build/Test/Run table, which
+  loosely grouped `npm run evals` under "run from `compliance/`"). Why: the eval gate must import the platform's
+  prompt loader, the versioned `OutputSchema` (`GENERATED_SITE_SCHEMA`), and 008's schema-validation contract.
+  There is no `compliance/package.json`, and a separate package would force duplicating the TS output schema or
+  importing compiled JS. So `npm run evals` is a **platform** script. `lint:rulesets` (005's deliverable) can
+  still live under `compliance/` later. **Flagged to owner** — if the CLAUDE.md table should be corrected to say
+  "evals run from `platform/`", that's a one-line doc edit (left untouched here; project instructions aren't
+  edited without ask).
+- **Evals are offline / fixture-based, not model-in-the-loop.** No live Gemini call (no key — same constraint as
+  008/009). A golden case is an *input fixture + expected properties*; output-property cases check a committed
+  candidate output, prompt-contract cases check the prompt text itself. This makes the gate deterministic and
+  CI-ready, and is the honest meaning of §8.6 without a key. **Clean extension when 020 + a key land:** run each
+  case's input through the real model and assert the *same* property checks on real output — the checker
+  machinery is unchanged.
+- **Eval baseline is a frozen §18.2 list, decoupled from 005's ruleset.** `evals/baseline.ts` hard-codes the
+  prohibited terms + required disclosures from PRD §18.2 (RIA quick-reference). It is deliberately NOT loaded from
+  `compliance/ria/v1.0/rules.json` (still an empty placeholder, and a long-lived artifact that will be *edited*).
+  Why: the gate must turn red **only** on a prompt/schema regression — not flicker because someone edited the
+  ruleset. 006's ruleset loader is the source of truth for *live* Layer-2 validation; the evals keep their own
+  fixed baseline.
+- **Prohibited-term scan uses only context-free terms + word boundaries.** Baseline includes guarantee(d/s),
+  promise(d/s), "no risk", "risk-free/free". It deliberately omits §18.2's context-dependent ones
+  ("best"/"top-ranked"/"outperform" *without substantiation*) — a deterministic substring gate would
+  false-positive on legitimate copy. Those are Layer-2's (006) nuanced job. Word-boundary `\bterm\b` matching so
+  "promise" never matches "compromise" (pinned by a golden case + a unit test).
+- **`npm run evals` is a SEPARATE vitest project, not part of `npm test`.** `vitest.evals.config.ts` globs
+  `evals/**/*.eval.ts` (node env, no jsdom/jest-dom) while the default config globs `src/**` — so the prompt gate
+  is a distinct CI step from the unit suite, with no new dependency. `--reporter=verbose` so per-case PASS/FAIL is
+  visible; `formatReport` also prints a readable report with the failing-check detail. Nonzero exit on failure
+  (confirmed exit 1).
+- **Schema validates structure + the confidence/sources invariant ONLY.** `GENERATED_SITE_SCHEMA.parse` does not
+  check "no prohibited terms" or "CRS link present" — those are content properties owned by the evals and Layer-2.
+  Keeping the schema's job narrow avoids two sources of truth for compliance content rules.
+- **Negative-case semantics test the gate's teeth without a permanently-red suite.** A case declares
+  `expect:"pass"|"fail"`; a `fail` case is `ok` precisely when ≥1 asserted check fails (the bad input was caught).
+  So the committed `broken-prompt.md` case stays green by being correctly rejected. The literal "broken prompt
+  makes evals fail" (acceptance #4) was additionally demonstrated live (temp-removed `{{compliance_ruleset}}` from
+  the real `generate-site.md` → red + exit 1, then restored).
+- **5-file guardrail:** this slice spans ~14 files (3 modules × {impl,test} + 4 prompts + baseline/cases/fixtures
+  + eval spec + config + package.json + barrel). Past the literal guardrail, but **one coherent vertical slice**
+  (the harness is a single deliverable per the ticket), built core-first with TDD (schema → loader → runner, each
+  red→green before the next). No DB/schema change, no new dep.
+
+**Green:** `npm test` **258** (+33: 12 schema + 8 loader + 13 runner), `npm run evals` **15/15 cases**,
+typecheck / lint / build all green. No deferral — fully verifiable offline.
+
+## 2026-06-01 — 005 RIA v1.0 compliance ruleset + lint:rulesets (PRD §5.3, §5.5, §5.6, §18.2)
+
+**Context:** Picked 005 as the next AFK (owner-confirmed) over 004/011. Rationale: 005 is the root of the
+compliance moat — it unblocks 006 (→ 020/021/029/031/034) + 016 + 023 — and its *build* acceptance is 100%
+verifiable offline (the `lint:rulesets` gate runs locally; no Docker / API key / live infra), unlike 004 (needs
+a verified Resend domain) and 011 (needs Docker for the live DB write). Only the final two-person publish
+sign-off is human-gated, exactly as Q3a specified. Done in two slices in one session.
+
+**The linter lives in `compliance/`, zero-dependency.** Resolves the flag left in the 007 entry (evals stayed in
+`platform/` because they import the TS output schema; `lint:rulesets` has no such coupling, so it belongs under
+`compliance/` per the CLAUDE.md Build/Test/Run table). `compliance/package.json` (`type:module`, **no deps**):
+`lint:rulesets` → `node scripts/lint-rulesets.mjs`; `test` → `node --test`. Chose a hand-rolled structural
+validator over `ajv` so the workspace needs **no `npm install`** (fully offline, no dependency to justify per the
+guardrail). A real Draft-2020-12 `compliance/rules.schema.json` ships alongside for **editor support + contract
+docs**, but `scripts/lint.mjs` is the *authoritative* validator (it does semantic checks JSON Schema can't:
+citation-id resolution, on-disk manifest reference resolution, the §5.7 publish gate, §18.2 footer markers).
+
+**One deep module, pure-checks + IO-edge split** (same pattern as auth/validation vs auth/service):
+`lint.mjs` exposes pure `checkRulesJson / checkCitations / checkManifest(_, exists) / checkReviewGate /
+checkFooter` (operate on parsed objects + a file-exists predicate — unit-testable, no fs) plus IO runners
+`lintRuleset(dir)` / `lintAll(root)` / `formatReport` (fs only here). Every check returns flat, path-qualified
+error strings; a ruleset is valid iff all return []. TDD throughout (28 red→green micro-cycles for the checks; a
+`v*/` inside a block comment closed it early — caught at first run, reworded).
+
+**`rules.json` shape (the artifact 006's loader will consume).** `prohibited_terms` (literal/word/regex scan list
+w/ `severity` + `requires_substantiation` context flag — guarantee/promise/no-risk = high non-substantiable;
+best/top-ranked/outperform = medium, requires substantiation) **plus a `prohibited_content` array I added** for
+the §5.3 categories that aren't single-word scans (testimonials, unsubstantiated/hypothetical performance,
+endorsements w/o comp disclosure, forward-looking w/o risk) — Layer-2's LLM judges these. `required_elements`
+(ADV 2A/2B footer; CRS footer+page; Privacy footer+page) each carry `placement`. `required_disclosures`
+(registration-no-skill, informational-only, Reg S-P) carry `template` + `text_pattern`. `conditional_rules`
+encode SEC (AUM ≥ $100M) vs state (AUM < $100M, `applies_overlay:true`) per §5.5. Every rule references an id in
+a `citations` map (deterministic "citation for every rule" — stronger than scanning prose).
+
+**§5.7 publish gate enforced in code, not just convention.** `checkReviewGate`: if `manifest.review.approved`
+is `true` it *requires* ≥2 `reviewers` + `published_at`/`published_by`, else lint fails. So an accidental
+`approved:true` can't pass CI without a real two-person record. The ruleset ships `approved:false` (the human
+gate). Acceptance #6 is therefore `[~]` (built + enforced, sign-off pending) — **second approver still TBD**, and
+**counsel must verify citation URLs before publish** (titles authoritative, URLs best-effort; flagged in rules.md
++ each overlay).
+
+**State overlays = drafts, accuracy-flagged.** 10 overlays (CA/NY/TX/FL/IL/PA/NJ/MA/GA/OH) each carry the
+correct regulator name + the standard state registration footer line + a citation, with explicit "verify
+state-specific requirements with counsel" notes — per the ticket's "flag, don't guess" rule. Wired into
+`manifest.state_overlays`; the linter verifies each file resolves.
+
+**Consistency with 007's frozen eval baseline:** intentional superset. `evals/baseline.ts` froze the *context-free*
+§18.2 terms only (so the eval gate stays deterministic); 005's `rules.json` adds the context-dependent terms +
+`prohibited_content` + full required-element set. 006's loader (not the evals) is the source of truth for *live*
+Layer-2; the two are deliberately decoupled (see the 007 entry).
+
+**5-file guardrail:** the ticket spans ~28 files across two slices (validator+tests+schema+fixtures, then the
+authored ria/v1.0 artifacts + 10 overlays). Past the literal count but a single coherent deliverable ("author the
+ruleset + the validator that keeps it well-formed"), built TDD-first and sliced (tooling+base ruleset → overlays).
+Mostly versioned content artifacts, not logic. No DB/schema change, no new dependency.
+
+**Green:** `npm run lint:rulesets` exit 0 on `ria/v1.0`; exit 1 + 8 errors on the malformed fixture (gate bites);
+`node --test` **31/31**. No UI in this ticket, so no frontend test / preview URL applies — the runnable gate +
+test suite are the handoff. **Deferred (the human gate, by design):** two-person sign-off + counsel URL
+verification before `approved:true`.
+
+---
+
+## 2026-06-01 — 006 Layer-2 compliance validator + ruleset loader (PRD §5.2, §5.6, §8.1)
+
+The automated compliance gate — "never ship copy that hasn't passed Layer 2." One deep module
+`platform/src/lib/compliance/` (ruleset → loader → validator → persistence + index), built TDD-first.
+**No migration** (002 already shipped `compliance_rulesets` + `compliance_violations`); **no new dependency**.
+
+- **Layer 2 is a HYBRID, deliberately — deterministic backbone + additive AI pass.** PRD §5.2 frames Layer 2 as
+  "a separate Gemini Flash call," but a pure-LLM gate is non-deterministic, costs money per check, untestable
+  without a key, and a single prompt regression would silently disable the whole moat. So:
+  - **Deterministic pass (always runs, authoritative).** Word-boundary scan for *context-free* prohibited terms
+    + required-element/disclosure presence. Free, fast, offline-verifiable, immune to prompt drift — this is the
+    gate's teeth and covers every ticket acceptance criterion.
+  - **AI semantic pass (Gemini Flash, additive — `validator.runAiPass`).** Catches what regex can't: the
+    `prohibited_content` categories (testimonials, hypothetical performance, forward-looking-without-risk) and
+    *context-dependent* superlatives (best/outperform only when used as an unsubstantiated claim). It can only
+    ADD violations, never remove a deterministic one. Skipped when no client is supplied, and that's **surfaced**
+    via `Layer2Result.aiPassRan:false` — missing semantic coverage is never silently treated as a pass.
+  This is the §8.2.2 "rulebook rides in the *system* prompt" stance taken one step further (the deterministic
+  layer is independent of the prompt entirely), and it's consistent with the reasoning 007 baked into its eval
+  baseline (context-free terms only in deterministic scans, to avoid false positives on "best"/"outperform").
+- **Term split keyed on `requires_substantiation`.** `validateDeterministic` scans only the `prohibited_terms`
+  groups where `requires_substantiation === false`; the `true` groups (superlatives) + all `prohibited_content`
+  go to the AI pass. A deterministic substring gate on "best" would false-positive on legitimate copy and block
+  good sites — exactly the failure mode 007 called out.
+- **Pure/IO split, same as auth/orders.** `ruleset.ts` is pure (parse + resolve overlay + build prompt text);
+  `loader.ts` is the fs edge (reads `compliance/{industry}/v{version}/` at `<platform-cwd>/../compliance`, dir
+  injectable so the loader test runs against the **real authored ria/v1.0** and catches drift); `validator.ts`
+  is pure deterministic checks + an IO seam (`Layer2Gemini`, the structural slice of `GeminiClient` — real
+  client satisfies it, tests inject a stub verdict); `persistence.ts` is the DB edge (service-role).
+- **`ValidationSubject` makes Layer 2 reusable across 020/029/031.** `{kind:"site"}` runs prohibited-terms +
+  required-element/disclosure checks (the footer is in scope); `{kind:"fragment"}` (edit chat 029, blog 031)
+  runs prohibited-terms only — a blog post is NOT the footer, so it must not fail for "missing CRS link." This
+  scoping is the key correctness call that keeps the gate reusable without false-failing fragments.
+- **Ruleset mirror respects 002's immutability trigger.** `mirrorRuleset` INSERTs the (industry, version) row
+  once and is a **no-op if it already exists** — never an UPDATE (002's before-update trigger on
+  `compliance_rulesets` blocks content edits; the on-disk artifact stays the source of truth). Stores the parsed
+  typed `rules` as `rules_json` + `rules.md` as `rules_markdown` for runtime lookup (§5.6).
+- **Version string = "ria/v1.0"** (`rulesetVersionString`). Carried on every `Layer2Result.rulesetVersion`,
+  written to `compliance_violations.ruleset_version`, and is the value 020 writes into
+  `generated_content.compliance_version_used`.
+- **Registration is an explicit input, not a schema column.** SEC-vs-state is determined by AUM in onboarding
+  (§5.5); `accounts` has no `registration`/AUM column yet (010/013 add it). So `resolveRuleset` takes
+  `registration` as a param + reads the overlay by `primaryState`; the caller (020) supplies registration from
+  intake. No schema change here.
+- **Verify path is offline-complete.** `GET /api/dev/compliance-check` validates a clean fixture (→ pass/0) and a
+  seeded-bad fixture ("guaranteed … no risk" + removed CRS link → fail/3) against the real ruleset. Both verified
+  in-process (route.test.ts) AND live (`curl localhost:3000/api/dev/compliance-check` → the exact 3 deterministic
+  violations: guarantee, no_risk, crs). `aiPassRan:false` (no key needed). Dev-gated (404 in prod), like
+  gemini-check.
+- **Deferred (`[~]`, consistent with 001–009/033 — no Docker/Gemini key this session):** (1) live
+  `compliance_violations` DB write — `recordViolations` is unit-proven against a mock service-role client; the
+  live insert + pipeline wiring lands with **020** (generation still stubbed, so nothing writes violations yet).
+  (2) live Flash AI pass — wired (`runLayer2` passes a real `geminiClient()` when `GEMINI_API_KEY` is set) and
+  tested against a stub boundary; activates with a dev key. **Catch-up:** set `GEMINI_API_KEY`, hit
+  `/api/dev/compliance-check` → expect `aiPassRan:true` and any semantic violations merged in.
+
+**No UI in this ticket** → no frontend test / preview URL applies; the runnable dev endpoint + test suite are the
+handoff (same as 005/007/008/009).
+
+**Green:** `npm test` **298** (+40: 10 ruleset + 5 loader + 14 validator + 7 persistence + 2 index + 2 dev route),
+`npm run typecheck`, `npm run lint`, `npm run build` (the `/api/dev/compliance-check` route compiles dynamic), and
+the separate `npm run evals` gate still **16/16**. **006 Done** → unblocks 020/021/029/031/034.
+
+---
+
+## 2026-06-05 — 010 Onboarding shell + 011 Waitlist (PRD §4.1 steps 4–6, §7.7, §15.4, §2.2)
+
+**Context.** First slice that reaches the UI for the build pipeline — the onboarding spine that creates an
+order and fires `order.created`. Built 011 (waitlist) alongside it because the industry grid needs a
+functional waitlist for its four non-RIA cards. Wireframe checkpoint (Q1c) approved before build.
+
+- **Auto-save / resume persists onto `accounts`, no progress table (owner decision).** The onboarding
+  answers (`industry`, `sub_industry`) ARE the resumable state — `getOnboardingState` reads them + whether an
+  order exists, and pure `resolveResumeStep` turns that into the step to render. Chosen over a dedicated
+  `onboarding_progress` jsonb column for speed/simplicity at 010's two questions. **013's richer quick-questions
+  may need more** (a draft store) — revisit then; this is not a permanent decision against the column.
+- **Payment is a simulated placeholder, no Stripe dep (owner decision, §15.4).** `POST /api/onboarding/checkout`
+  creates the order directly on "Start my site" — no `@stripe/*` package, no product/price setup. Full Stripe
+  enforcement is **032** (before private beta), which swaps in real billing at this exact seam.
+- **Order creation goes through the advisor's RLS-bound session, not service-role.** `orders_owner` /
+  `accounts_owner` are `FOR ALL WITH CHECK owns_account`, so the signed-in advisor can insert their own order +
+  update their own account. No service-role needed (unlike the admin/pipeline writes).
+- **`createOrderAndEnqueue` is idempotent on double-submit.** v1 is one website per account, so if any order
+  already exists for the account it returns that one without a second insert or re-emit (`service.test.ts`).
+- **Deps injected (client + userId + send), production wrapper `resolveOnboardingDeps`.** Same pattern as
+  `lib/admin/orders.ts` — routes build deps from the cookie-bound server client + real Inngest sender; tests
+  inject stubs. Keeps the IO unit-tested without Docker.
+- **011 waitlist: public-insert RLS policy + dedup index (migration `20260605120000`).** The core-schema RLS
+  file explicitly deferred the waitlist public-insert policy to 011. Added `for insert to anon, authenticated
+  with check (true)` (no SELECT policy — list stays service-role-only for 036's /admin/leads) + a
+  `unique (email, industry)` index so the `ignoreDuplicates` upsert is a true no-op. Emails normalized to
+  lowercase in the service before insert so casing collapses. This migration is separate from and does not
+  contradict the "no migration for onboarding auto-save" decision above.
+- **`/onboarding` is its own full-screen segment (concierge canvas), not under the dashboard shell.** Wrapped
+  only by the root layout; clean single-column flow, no sidebar. Auth-gated by the existing middleware (not in
+  `PUBLIC_PATHS`). The waitlist API is reachable signed-out because API routes self-gate in middleware.
+
+**Deferred (`[~]`).** (1) **Emailed magic-link** for "Save & continue later" → lands with **004** (Resend); the
+*resume capability* itself works fully today (server-derived from the persisted account — an authed advisor
+returns to `/onboarding` and resumes exactly). (2) **Skip-with-default affordance** → none of 010's three steps
+is a genuinely-optional question, so the visible skip first appears with **013**'s optional quick-questions; the
+save-before-advance mechanism + `validateSubClass` default are in place. (3) **Live DB** insert/update + live
+`order.created` round-trip (no Docker/Inngest this session, same as 001–009) — all contracts unit-proven against
+stubs. **Entry-point wiring** (post-verify redirect to `/onboarding` when no order) intentionally left to the
+onboarding-completion follow-up; `/onboarding` is reachable directly today.
+
+**Visual QA** (chrome-devtools temp preview `preview-onboarding`, fully torn down + middleware allowance removed):
+**Lighthouse a11y 100 / best-practices 100** (desktop), console clean, 375 + 1280px — industry / sub-class /
+payment / handoff screens all verified; mobile single-column stack confirmed.
+
+**Green:** `npm test` **334** (+36: 13 steps + 6 waitlist-validate + 9 onboarding-service + 3 waitlist-service +
+5 flow frontend), `npm run typecheck`, `npm run lint`, `npm run build` (`/onboarding` + 3 API routes compile
+dynamic). **010 + 011 Done.** 010 unblocks **012** (scrape/intake) → the AI pipeline; also **013, 015**.

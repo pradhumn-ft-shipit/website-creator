@@ -15,12 +15,24 @@ The conversational onboarding spine that creates an order and kicks off the pipe
 - **Background status:** non-blocking indicator surfaces scrape/generation progress at top of screen.
 
 ## Acceptance
-- [ ] One-question-at-a-time flow with progress, Back/Next, and auto-save (refresh loses nothing).
-- [ ] Industry grid: RIA proceeds; the other four route to waitlist capture (011).
-- [ ] Completing checkout (placeholder) creates an `orders` row and fires `order.created`.
-- [ ] "Save & continue later" resumes via emailed magic link from any step.
-- [ ] Non-required questions support skip-with-default; required ones block.
-- [ ] Background-processing indicator renders without blocking the flow.
+- [x] One-question-at-a-time flow with progress, Back/Next, and auto-save (refresh loses nothing).
+      (ProgressRail + BackButton; each step POSTs to `/api/onboarding/selection` before advancing, so
+      the server page re-derives the resume step from the persisted account on refresh — `flow.test.tsx`
+      + `steps.test.ts#resolveResumeStep`.)
+- [x] Industry grid: RIA proceeds; the other four route to waitlist capture (011).
+      (`industry-grid.tsx` + `flow.test.tsx` waitlist-branch test.)
+- [x] Completing checkout (placeholder) creates an `orders` row and fires `order.created`.
+      (`createOrderAndEnqueue` → insert `payment_received` + emit; `service.test.ts` + `flow.test.tsx`.)
+- [~] "Save & continue later" resumes via emailed magic link from any step.
+      (Resume works fully — every step auto-saves and the server resolves the resume step, so an
+      already-signed-in advisor returns to `/onboarding` and lands exactly where they left off. The
+      *emailed* magic-link delivery of that resume URL is deferred to **004** (Resend), same seam 003 used.)
+- [~] Non-required questions support skip-with-default; required ones block.
+      (Industry + payment are required and block; the sub-class step defaults to `ria_only`. None of 010's
+      three steps is a genuinely-optional question, so the skip-with-default *affordance* first appears with
+      **013**'s optional quick-questions — `validateSubClass` + the save-before-advance mechanism are in place.)
+- [x] Background-processing indicator renders without blocking the flow.
+      (Handoff screen's `aria-live` "Preparing your website…" indicator — non-blocking, advisor can leave.)
 
 ## Notes
 - Load `skills/frontend-design.md` before building screens; §7 is mandatory.
