@@ -15,12 +15,20 @@ Author the versioned RIA ruleset artifacts that Layers 1–3 consume, plus the v
 - **Tooling:** `compliance/` `npm run lint:rulesets` validates JSON against a `rules.schema.json` (terms well-formed, every required element has placement, manifest references resolve).
 
 ## Acceptance
-- [ ] `npm run lint:rulesets` passes against the authored `ria/v1.0` artifacts and fails on a malformed fixture.
-- [ ] `rules.json` encodes all §18.2 prohibited terms and all §5.3 required elements with placement.
-- [ ] `footer-standard.md` matches the §18.2 footer template with ruleset-filled placeholders.
-- [ ] Top-10 state overlays present (§5.5); SEC vs state conditional rules encoded.
-- [ ] `rules.md` carries a citation for every rule; `manifest.json` resolves all referenced files.
-- [ ] Two-person review recorded in `manifest.json` before `approved: true` (§5.7) — **do not publish without it.**
+- [x] `npm run lint:rulesets` passes against the authored `ria/v1.0` artifacts and fails on a malformed fixture.
+      (CLI exit 0 on `ria/v1.0`; exit 1 + 8 errors on `__fixtures__/malformed/v1.0`. 31 validator tests.)
+- [x] `rules.json` encodes all §18.2 prohibited terms and all §5.3 required elements with placement.
+      (4 `prohibited_terms` groups + 5 `prohibited_content` + 4 `required_elements` w/ placement + 3 `required_disclosures`.)
+- [x] `footer-standard.md` matches the §18.2 footer template with ruleset-filled placeholders.
+      (`{{firm_name}}` / `{{registration_status}}` + both disclaimers + ADV 2A/2B/CRS/Privacy links; linter-checked.)
+- [x] Top-10 state overlays present (§5.5); SEC vs state conditional rules encoded.
+      (CA/NY/TX/FL/IL/PA/NJ/MA/GA/OH overlays wired in `manifest.state_overlays`; `conditional_rules` for sec/state.)
+- [x] `rules.md` carries a citation for every rule; `manifest.json` resolves all referenced files.
+      (every rule cites an id in the `citations` map — linter enforces resolution; manifest artifact + overlay paths resolve.)
+- [~] Two-person review recorded in `manifest.json` before `approved: true` (§5.7) — **do not publish without it.**
+      DEFERRED: this is the human sign-off gate. The *enforcement* is built — `manifest` stays `approved:false`, and
+      the linter blocks `approved:true` unless ≥2 reviewers + `published_at/by` are recorded. Awaiting a named second
+      approver (open TBD) + counsel citation-URL verification. See decisions.md.
 
 ## Notes
 - **Guardrail:** never publish a ruleset without two-person review (CLAUDE.md / §5.7). Legal review of compliance language is an external prerequisite (§17.5).

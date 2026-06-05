@@ -1,0 +1,11 @@
+{
+  "name": "wri-compliance",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "WRI versioned compliance rulesets + lint:rulesets validator (PRD §5). Zero runtime dependencies — pure Node.",
+  "scripts": {
+    "lint:rulesets": "node scripts/lint-rulesets.mjs",
+    "test": "node --test"
+  }
+}

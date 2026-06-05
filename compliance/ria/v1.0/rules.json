@@ -1,10 +1,182 @@
 {
-  "$schema": "./rules.schema.json",
+  "$schema": "../../rules.schema.json",
   "industry": "ria",
   "version": "1.0",
   "status": "draft",
-  "prohibited_terms": [],
-  "required_disclosures": [],
-  "conditional_rules": [],
-  "_placeholder": "Author from PRD §5 + active RIA regulatory sources. prohibited_terms = Layer 2 scan list; required_disclosures = footer/page disclosures that must be present. Validated by `npm run lint:rulesets`."
+  "prohibited_terms": [
+    {
+      "id": "guarantee",
+      "terms": ["guarantee", "guaranteed", "guarantees", "guaranteeing"],
+      "severity": "high",
+      "match": "word",
+      "requires_substantiation": false,
+      "citation": "sec_marketing_rule",
+      "description": "Guarantees of investment performance, returns, or outcomes are prohibited. An RIA may not guarantee results."
+    },
+    {
+      "id": "promise",
+      "terms": ["promise", "promised", "promises", "promising"],
+      "severity": "high",
+      "match": "word",
+      "requires_substantiation": false,
+      "citation": "sec_marketing_rule",
+      "description": "Promises of investment results or returns are prohibited (distinct from ordinary service language; flagged for human review in context)."
+    },
+    {
+      "id": "no_risk",
+      "terms": ["no risk", "risk-free", "risk free", "riskless", "zero risk"],
+      "severity": "high",
+      "match": "word",
+      "requires_substantiation": false,
+      "citation": "sec_marketing_rule",
+      "description": "Claims that an investment or strategy carries no risk are prohibited."
+    },
+    {
+      "id": "unsubstantiated_superlatives",
+      "terms": ["best", "top-ranked", "top ranked", "top-rated", "top rated", "#1", "number one", "outperform", "outperforms", "outperformed"],
+      "severity": "medium",
+      "match": "word",
+      "requires_substantiation": true,
+      "citation": "sec_marketing_rule",
+      "description": "Superlatives, rankings, and outperformance claims are prohibited unless substantiated and presented with the disclosures required by the Marketing Rule."
+    }
+  ],
+  "prohibited_content": [
+    {
+      "id": "unsubstantiated_performance",
+      "description": "Specific performance claims presented without the calculations, time periods, and disclosures required by the Marketing Rule (e.g., net-of-fees figures, standardized periods, gross/net presentation).",
+      "severity": "high",
+      "citation": "sec_marketing_rule"
+    },
+    {
+      "id": "hypothetical_performance",
+      "description": "Hypothetical, backtested, model, or projected performance shown without the required hypothetical-performance disclosures and audience restrictions.",
+      "severity": "high",
+      "citation": "sec_marketing_rule"
+    },
+    {
+      "id": "testimonials",
+      "description": "Client testimonials are disallowed entirely in WRI v1. Compliant testimonial blocks (with required disclosures) are deferred to v2.",
+      "severity": "high",
+      "citation": "sec_marketing_rule"
+    },
+    {
+      "id": "endorsements_without_disclosure",
+      "description": "Third-party endorsements without the required compensation and material-conflict-of-interest disclosures.",
+      "severity": "high",
+      "citation": "sec_marketing_rule"
+    },
+    {
+      "id": "forward_looking_without_risk",
+      "description": "Forward-looking statements about markets or outcomes presented without accompanying risk disclosure.",
+      "severity": "medium",
+      "citation": "sec_marketing_rule"
+    }
+  ],
+  "required_elements": [
+    {
+      "id": "adv_2a",
+      "label": "Form ADV Part 2A (Firm Brochure)",
+      "link_kind": "adv_2a",
+      "placement": ["footer"],
+      "citation": "sec_form_adv_2a"
+    },
+    {
+      "id": "adv_2b",
+      "label": "Form ADV Part 2B (Brochure Supplement)",
+      "link_kind": "adv_2b",
+      "placement": ["footer"],
+      "citation": "sec_form_adv_2b"
+    },
+    {
+      "id": "crs",
+      "label": "Form CRS (Customer Relationship Summary)",
+      "link_kind": "crs",
+      "placement": ["footer", "page"],
+      "citation": "sec_form_crs"
+    },
+    {
+      "id": "privacy_policy",
+      "label": "Privacy Policy",
+      "link_kind": "privacy",
+      "placement": ["footer", "page"],
+      "citation": "reg_sp"
+    }
+  ],
+  "required_disclosures": [
+    {
+      "id": "registration_no_skill",
+      "label": "Registration-does-not-imply-skill disclaimer",
+      "template": "Registration does not imply a certain level of skill or training.",
+      "text_pattern": "registration does not imply",
+      "placement": ["footer"],
+      "citation": "sec_form_crs"
+    },
+    {
+      "id": "informational_only",
+      "label": "Informational-purposes-only disclaimer",
+      "template": "Information on this website is for informational purposes only and does not constitute investment, tax, or legal advice.",
+      "text_pattern": "informational purposes only",
+      "placement": ["footer"],
+      "citation": "advisers_act"
+    },
+    {
+      "id": "privacy_notice",
+      "label": "Regulation S-P privacy notice",
+      "template": "We protect your nonpublic personal information in accordance with our Privacy Policy and Regulation S-P.",
+      "text_pattern": "privacy",
+      "placement": ["page"],
+      "citation": "reg_sp"
+    }
+  ],
+  "conditional_rules": [
+    {
+      "id": "sec_registration_disclosure",
+      "when": { "registration": "sec" },
+      "requires": ["sec_registration_statement"],
+      "template": "{{firm_name}} is an SEC-registered investment adviser.",
+      "applies_overlay": false,
+      "description": "Advisers with AUM ≥ $100M register with the SEC and state SEC registration in the footer registration line.",
+      "citation": "advisers_act"
+    },
+    {
+      "id": "state_registration_disclosure",
+      "when": { "registration": "state" },
+      "requires": ["state_registration_statement"],
+      "template": "{{firm_name}} is a state-registered investment adviser registered with the {{state}} securities regulator.",
+      "applies_overlay": true,
+      "description": "Advisers with AUM < $100M register with their state(s). State registration is stated in the footer and the matching state overlay (disclosures/state-overlays/<state>.md) is applied.",
+      "citation": "nasaa_state"
+    }
+  ],
+  "citations": {
+    "sec_marketing_rule": {
+      "title": "SEC Investment Adviser Marketing Rule, 17 CFR 275.206(4)-1 (modernized 2021)",
+      "url": "https://www.ecfr.gov/current/title-17/chapter-II/part-275/section-275.206(4)-1"
+    },
+    "sec_form_adv_2a": {
+      "title": "Form ADV Part 2A — Firm Brochure",
+      "url": "https://www.sec.gov/about/forms/formadv-part2.pdf"
+    },
+    "sec_form_adv_2b": {
+      "title": "Form ADV Part 2B — Brochure Supplement",
+      "url": "https://www.sec.gov/about/forms/formadv-part2.pdf"
+    },
+    "sec_form_crs": {
+      "title": "Form CRS / Form ADV Part 3 — Customer Relationship Summary",
+      "url": "https://www.sec.gov/investment/form-crs"
+    },
+    "reg_sp": {
+      "title": "Regulation S-P — Privacy of Consumer Financial Information, 17 CFR Part 248",
+      "url": "https://www.ecfr.gov/current/title-17/chapter-II/part-248"
+    },
+    "advisers_act": {
+      "title": "Investment Advisers Act of 1940",
+      "url": "https://www.govinfo.gov/app/details/COMPS-1878"
+    },
+    "nasaa_state": {
+      "title": "NASAA — State Investment Adviser Registration",
+      "url": "https://www.nasaa.org/industry-resources/investment-advisers/"
+    }
+  }
 }

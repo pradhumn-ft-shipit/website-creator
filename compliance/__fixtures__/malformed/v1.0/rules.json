@@ -1,0 +1,27 @@
+{
+  "industry": "demo",
+  "version": "1.0",
+  "status": "draft",
+  "prohibited_terms": [
+    {
+      "id": "guarantee",
+      "terms": ["guarantee"],
+      "match": "word",
+      "requires_substantiation": false,
+      "citation": "missing_source"
+    }
+  ],
+  "required_elements": [
+    {
+      "id": "crs",
+      "label": "Form CRS",
+      "link_kind": "crs",
+      "citation": "src_a"
+    }
+  ],
+  "required_disclosures": [],
+  "conditional_rules": [],
+  "citations": {
+    "src_a": { "title": "Demo source", "url": "https://example.com/" }
+  }
+}

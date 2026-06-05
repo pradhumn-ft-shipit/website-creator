@@ -1,18 +1,38 @@
 {
   "industry": "ria",
+  "sub_industry": null,
   "version": "1.0",
   "status": "draft",
-  "description": "RIA (SEC- and state-registered investment advisers) compliance ruleset for WRI v1. Source citations live in rules.md; machine-readable rules in rules.json.",
+  "description": "RIA (SEC- and state-registered investment advisers) compliance ruleset for WRI v1. Source citations live in rules.md; machine-readable rules in rules.json. Authored from PRD §5 + §18.2.",
   "created": "2026-05-31",
-  "review": {
-    "two_person_required": true,
-    "reviewers": [],
-    "approved": false
-  },
+  "last_reviewed": "2026-06-01",
   "artifacts": {
     "rules_machine": "rules.json",
     "rules_human": "rules.md",
     "disclosures_dir": "disclosures/"
   },
-  "notes": "PLACEHOLDER. Do not mark approved or use in generation until rules are authored from the PRD §5 compliance framework and the active RIA regulatory sources, then passed through two-person review (PRD §5.7)."
+  "disclosures": {
+    "footer_standard": "disclosures/footer-standard.md",
+    "crs_page_template": "disclosures/crs-page-template.md"
+  },
+  "state_overlays": [
+    { "state": "CA", "file": "disclosures/state-overlays/ca.md" },
+    { "state": "NY", "file": "disclosures/state-overlays/ny.md" },
+    { "state": "TX", "file": "disclosures/state-overlays/tx.md" },
+    { "state": "FL", "file": "disclosures/state-overlays/fl.md" },
+    { "state": "IL", "file": "disclosures/state-overlays/il.md" },
+    { "state": "PA", "file": "disclosures/state-overlays/pa.md" },
+    { "state": "NJ", "file": "disclosures/state-overlays/nj.md" },
+    { "state": "MA", "file": "disclosures/state-overlays/ma.md" },
+    { "state": "GA", "file": "disclosures/state-overlays/ga.md" },
+    { "state": "OH", "file": "disclosures/state-overlays/oh.md" }
+  ],
+  "review": {
+    "two_person_required": true,
+    "reviewers": [],
+    "approved": false
+  },
+  "published_at": null,
+  "published_by": null,
+  "notes": "DRAFT — not approved. Per PRD §5.7, do not set approved:true or use in generation until two people are recorded in review.reviewers and the citation URLs are verified by counsel. State overlays for the top-10 states by RIA count (CA, NY, TX, FL, IL, PA, NJ, MA, GA, OH) are present as drafts; their state-specific specifics still require counsel verification before publish."
 }

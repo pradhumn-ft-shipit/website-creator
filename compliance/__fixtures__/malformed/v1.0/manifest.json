@@ -1,0 +1,12 @@
+{
+  "industry": "demo",
+  "version": "1.0",
+  "status": "draft",
+  "artifacts": {
+    "rules_machine": "rules.json",
+    "rules_human": "rules.md",
+    "disclosures_dir": "disclosures/"
+  },
+  "state_overlays": [{ "state": "CA", "file": "disclosures/state-overlays/ca.md" }],
+  "review": { "two_person_required": true, "reviewers": ["only-one@wri.com"], "approved": true }
+}

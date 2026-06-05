@@ -1,0 +1,43 @@
+{
+  "industry": "demo",
+  "version": "1.0",
+  "status": "draft",
+  "prohibited_terms": [
+    {
+      "id": "guarantee",
+      "terms": ["guarantee", "guaranteed"],
+      "severity": "high",
+      "match": "word",
+      "requires_substantiation": false,
+      "citation": "src_a"
+    }
+  ],
+  "required_elements": [
+    {
+      "id": "crs",
+      "label": "Form CRS",
+      "placement": ["footer", "page"],
+      "link_kind": "crs",
+      "citation": "src_a"
+    }
+  ],
+  "required_disclosures": [
+    {
+      "id": "registration_disclaimer",
+      "template": "Registration does not imply a certain level of skill or training.",
+      "placement": ["footer"],
+      "citation": "src_a"
+    }
+  ],
+  "conditional_rules": [
+    {
+      "id": "state_disclosure",
+      "when": { "registration": "state" },
+      "requires": ["state_registration_disclosure"],
+      "citation": "src_a"
+    }
+  ],
+  "citations": {
+    "src_a": { "title": "Demo source", "url": "https://example.com/" }
+  }
+}
