@@ -63,7 +63,38 @@ export async function transitionOrder(
     );
   }
 
+  // Append to the order's state-machine history (033 Slice 2). Best-effort: the
+  // order's status is already persisted, and history is an audit aid, not the
+  // source of truth — a failed insert must not fail (or roll back) the
+  // transition, same posture as escalateOrderFailure's own write errors.
+  await recordStateEvent(client, orderId, from, next);
+
   return next;
+}
+
+/**
+ * Append one row to `order_state_events` — the append-only transition log the
+ * admin detail view reads as "state-machine history" (PRD §11.1). Non-throwing:
+ * swallows its own write error so it can never mask or undo the transition that
+ * already succeeded. `note` carries out-of-band context (e.g. 'admin retry').
+ */
+export async function recordStateEvent(
+  client: AdminClient,
+  orderId: string,
+  fromStatus: OrderState | null,
+  toStatus: OrderState,
+  note?: string,
+): Promise<void> {
+  try {
+    await client.from("order_state_events").insert({
+      order_id: orderId,
+      from_status: fromStatus,
+      to_status: toStatus,
+      note: note ?? null,
+    });
+  } catch {
+    // Audit-log write failures are non-fatal (see transitionOrder note above).
+  }
 }
 
 /**

@@ -175,6 +175,9 @@ export async function runPipeline({
 
   // Layer-3 gating (Q4c, §5.2/§13.3): only when Layer 2 flags OR within first 50.
   // Stub verdict = "pass", siteIndex = 0 (alpha → first-50 gate fires).
+  // TODO(020/006): thread the REAL Layer-2 `verdict` (006) and the order's actual
+  // `siteIndex` (020/033) into `layer3Required` — until then every post-50 passing
+  // site keeps routing through manual review because siteIndex is pinned to 0.
   const needsLayer3 = layer3Required({ verdict: "pass", siteIndex: 0 });
   if (needsLayer3) {
     await advance("layer3", "compliance_review_layer3");

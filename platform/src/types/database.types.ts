@@ -638,6 +638,40 @@ export type Database = {
           },
         ];
       };
+      order_state_events: {
+        Row: {
+          id: string;
+          order_id: string;
+          from_status: string | null;
+          to_status: string;
+          occurred_at: string;
+          note: string | null;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          from_status?: string | null;
+          to_status: string;
+          occurred_at?: string;
+          note?: string | null;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          from_status?: string | null;
+          to_status?: string;
+          occurred_at?: string;
+          note?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_state_events_order_id_fkey";
+            columns: ["order_id"];
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       admin_alerts: {
         Row: {
           id: string;
@@ -810,7 +844,10 @@ export type Database = {
 };
 
 /** The list of public table names, in migration order. Single source for the
- *  /api/health/db round-trip probe so it can't drift from the schema. */
+ *  /api/health/db round-trip probe so it can't drift from the schema. Scoped to
+ *  the §10.1 core data model (002's core_schema migration); operational/audit
+ *  tables added by later migrations (e.g. `order_state_events`, 033 Slice 2)
+ *  are typed above but intentionally excluded from the health probe. */
 export const PUBLIC_TABLES = [
   "users",
   "accounts",

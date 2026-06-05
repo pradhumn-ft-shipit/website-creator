@@ -11,6 +11,7 @@ import { transitionOrder, escalateOrderFailure } from "./transitions";
 function makeClient(currentStatus: string) {
   const updates: Array<Record<string, unknown>> = [];
   const alerts: Array<Record<string, unknown>> = [];
+  const events: Array<Record<string, unknown>> = [];
 
   const client = {
     from(table: string) {
@@ -44,11 +45,19 @@ function makeClient(currentStatus: string) {
           },
         };
       }
+      if (table === "order_state_events") {
+        return {
+          insert: async (payload: Record<string, unknown>) => {
+            events.push(payload);
+            return { data: null, error: null };
+          },
+        };
+      }
       throw new Error(`unexpected table ${table}`);
     },
   };
 
-  return { client, updates, alerts };
+  return { client, updates, alerts, events };
 }
 
 describe("transitionOrder", () => {
@@ -65,13 +74,28 @@ describe("transitionOrder", () => {
     });
   });
 
-  it("rejects an illegal transition and does not write", async () => {
-    const { client, updates } = makeClient("payment_received");
+  it("appends a from→to state-history event on a successful transition", async () => {
+    const { client, events } = makeClient("payment_received");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await transitionOrder(client as any, "order-1", "scraping");
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      order_id: "order-1",
+      from_status: "payment_received",
+      to_status: "scraping",
+      note: null,
+    });
+  });
+
+  it("rejects an illegal transition and writes neither order nor history", async () => {
+    const { client, updates, events } = makeClient("payment_received");
     await expect(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       transitionOrder(client as any, "order-1", "live"),
     ).rejects.toBeInstanceOf(IllegalTransitionError);
     expect(updates).toHaveLength(0);
+    expect(events).toHaveLength(0);
   });
 });
 

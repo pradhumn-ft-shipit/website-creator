@@ -23,6 +23,10 @@ const rlsPolicies = readFileSync(
   join(migrationsDir, "20260531131305_rls_policies.sql"),
   "utf8",
 );
+const orderStateEvents = readFileSync(
+  join(migrationsDir, "20260601120000_order_state_events.sql"),
+  "utf8",
+);
 
 /** The 17 §10.1 tables. */
 const EXPECTED_TABLES = [
@@ -101,5 +105,34 @@ describe("RLS policies migration", () => {
         new RegExp(`create policy \\w+ on public\\.${internal}\\b`),
       );
     }
+  });
+});
+
+describe("order_state_events migration (033 Slice 2)", () => {
+  it("creates the append-only transition log keyed on the order", () => {
+    expect(orderStateEvents).toContain("create table public.order_state_events (");
+    expect(orderStateEvents).toMatch(
+      /order_id\s+uuid not null references public\.orders \(id\) on delete cascade/,
+    );
+    expect(orderStateEvents).toMatch(/to_status\s+text not null/);
+  });
+
+  it("indexes by (order_id, occurred_at) for timeline reads", () => {
+    expect(orderStateEvents).toMatch(
+      /create index order_state_events_order_id_idx[\s\S]*?\(order_id, occurred_at\)/,
+    );
+  });
+
+  it("is an internal table: RLS enabled, no policy (service-role only)", () => {
+    expect(orderStateEvents).toMatch(
+      /alter table public\.order_state_events\s+enable row level security;/,
+    );
+    expect(orderStateEvents).not.toMatch(
+      /create policy \w+ on public\.order_state_events\b/,
+    );
+  });
+
+  it("stays out of the §10.1 core data model (PUBLIC_TABLES)", () => {
+    expect(PUBLIC_TABLES).not.toContain("order_state_events");
   });
 });

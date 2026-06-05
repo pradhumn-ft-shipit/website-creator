@@ -17,6 +17,7 @@ const badgeVariants = cva(
         neutral: "border-transparent bg-muted text-foreground/70",
         success: "border-transparent bg-success/15 text-[oklch(0.4_0.1_150)]",
         warning: "border-transparent bg-warning/22 text-[oklch(0.44_0.095_68)]",
+        destructive: "border-transparent bg-destructive/12 text-[oklch(0.45_0.17_27)]",
         outline: "text-foreground",
       },
     },
