@@ -14,11 +14,20 @@ Versioned prompts + a golden-case eval gate, so every prompt change is tested be
 - **Runner:** `npm run evals` runs cases against the current prompts/schemas and reports pass/fail; CI-ready.
 
 ## Acceptance
-- [ ] `npm run evals` runs the golden cases and reports per-case pass/fail with a nonzero exit on failure.
-- [ ] Prompt loader returns text + a version string that callers can persist on generated rows.
-- [ ] At least 10 golden cases exist, asserting properties (CRS link present, no prohibited terms, schema-valid).
-- [ ] A deliberately-broken prompt fixture makes `npm run evals` fail (proves the gate bites).
-- [ ] Output schema enforces `confidence` + `sources[]` per field (§8.2.4).
+- [x] `npm run evals` runs the golden cases and reports per-case pass/fail with a nonzero exit on failure.
+      (`vitest run --config vitest.evals.config.ts --reporter=verbose`; `formatReport` prints `PASS/FAIL <case>`
+      lines; confirmed `exit code = 1` on a failing run.)
+- [x] Prompt loader returns text + a version string that callers can persist on generated rows.
+      (`loadPrompt(name).ref` = `"generate-site@v1"`, `.version` = `"v1"`; `loader.test.ts`.)
+- [x] At least 10 golden cases exist, asserting properties (CRS link present, no prohibited terms, schema-valid).
+      (15 cases: 10 output-property + 5 prompt-contract; `evals/cases.ts`, guarded by a ≥10 meta-assertion.)
+- [x] A deliberately-broken prompt fixture makes `npm run evals` fail (proves the gate bites).
+      (Durable negative case `broken-prompt-is-rejected` on `evals/fixtures/v1/broken-prompt.md`; PLUS demonstrated
+      live — temp-removing `{{compliance_ruleset}}` from the real `generate-site.md` → `FAIL prompt-generate-site-contract:
+      missing markers: ruleset_in_system`, exit 1 — then restored.)
+- [x] Output schema enforces `confidence` + `sources[]` per field (§8.2.4).
+      (`GENERATED_SITE_SCHEMA.parse` rejects missing/out-of-range confidence + non-array/non-string sources on every
+      field, recursively; `schema.test.ts`. Independently re-checked by the `field_confidence_sources` eval.)
 
 ## Notes
 - Evals assert properties, never exact strings — copy will change; the contract is structural (§8.6).

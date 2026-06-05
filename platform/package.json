@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "evals": "vitest run --config vitest.evals.config.ts --reporter=verbose",
     "gen:types": "supabase gen types typescript --local > src/types/database.types.ts"
   },
   "dependencies": {

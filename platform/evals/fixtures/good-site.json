@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "site.v1",
+  "firm": {
+    "name": { "value": "Cedar Ridge Wealth Advisors", "confidence": 0.98, "sources": ["intake:firm_name"] },
+    "tagline": { "value": "Fee-only financial planning for families near retirement", "confidence": 0.82, "sources": ["intake:ideal_client", "intake:fee_structure"] },
+    "registration": { "value": "Cedar Ridge Wealth Advisors is an SEC-registered investment adviser.", "confidence": 0.95, "sources": ["iapd:registration_status"] }
+  },
+  "pages": [
+    {
+      "key": "home",
+      "title": { "value": "Home", "confidence": 1, "sources": [] },
+      "sections": [
+        { "key": "hero", "heading": { "value": "Plan with clarity, invest with discipline", "confidence": 0.7, "sources": ["intake:differentiator"] }, "body": { "value": "We help families approaching retirement build a plan they understand and can stick with through every market.", "confidence": 0.68, "sources": ["intake:ideal_client"] } },
+        { "key": "approach", "heading": { "value": "A fiduciary, fee-only approach", "confidence": 0.8, "sources": ["intake:fee_structure"] }, "body": { "value": "As a fee-only adviser, we are compensated only by our clients, never by commissions or product sales.", "confidence": 0.85, "sources": ["intake:fee_structure"] } }
+      ]
+    },
+    {
+      "key": "about",
+      "title": { "value": "About", "confidence": 1, "sources": [] },
+      "sections": [
+        { "key": "story", "heading": { "value": "Who we are", "confidence": 0.9, "sources": [] }, "body": { "value": "Founded in 2014, Cedar Ridge serves families across the region with comprehensive planning.", "confidence": 0.6, "sources": ["scrape:about"] } }
+      ]
+    },
+    {
+      "key": "services",
+      "title": { "value": "Services", "confidence": 1, "sources": [] },
+      "sections": [
+        { "key": "planning", "heading": { "value": "Financial planning", "confidence": 0.9, "sources": ["intake:services"] }, "body": { "value": "Retirement, tax, and estate planning tailored to your goals.", "confidence": 0.7, "sources": ["intake:services"] } }
+      ]
+    },
+    {
+      "key": "contact",
+      "title": { "value": "Contact", "confidence": 1, "sources": [] },
+      "sections": [
+        { "key": "cta", "heading": { "value": "Schedule an introduction", "confidence": 0.9, "sources": [] }, "body": { "value": "Book a no-obligation conversation to see whether we are a good fit.", "confidence": 0.75, "sources": [] } }
+      ]
+    }
+  ],
+  "footer": {
+    "disclaimer": { "value": "Registration does not imply a certain level of skill or training. Information on this website is for informational purposes only and does not constitute investment, tax, or legal advice.", "confidence": 0.99, "sources": ["ruleset:footer_template"] },
+    "privacyNotice": { "value": "We protect your personal information in accordance with our privacy policy and Regulation S-P.", "confidence": 0.9, "sources": ["ruleset:privacy"] },
+    "links": [
+      { "label": "Form ADV Part 2A", "url": "https://reports.adviserinfo.sec.gov/reports/ADV/000000/PDF/000000.pdf", "kind": "adv_2a" },
+      { "label": "Form ADV Part 2B", "url": "https://reports.adviserinfo.sec.gov/reports/ADV/000000/PDF/000000-2b.pdf", "kind": "adv_2b" },
+      { "label": "Form CRS", "url": "https://reports.adviserinfo.sec.gov/crs/crs_000000.pdf", "kind": "crs" },
+      { "label": "Privacy Policy", "url": "/privacy", "kind": "privacy" }
+    ]
+  }
+}
