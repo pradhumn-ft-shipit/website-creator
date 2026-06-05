@@ -61,14 +61,39 @@ export class CostAccumulator {
 
   constructor(private readonly capUsd: number = PER_SITE_COST_CAP_USD) {}
 
-  /** Record a completed call. Returns its cost. */
-  record(model: GeminiModelId, usage: TokenUsage, isImage = false): number {
+  /**
+   * Record one dispatched call's token spend; returns its cost. Call this for
+   * EVERY attempt that hit the wire — including a failed parse, a repair, or an
+   * over-cap response — because those tokens were still billed. Recording only
+   * the successful attempt undercounts spend and lets a site slip past the $2
+   * guard (the failure/repair loop is exactly where spend balloons).
+   */
+  recordUsage(model: GeminiModelId, usage: TokenUsage): number {
     const cost = estimateCostUsd(model, usage);
     this.totalUsd += cost;
     this.totalInputTokens += usage.inputTokens;
     this.totalOutputTokens += usage.outputTokens;
     this.callCount += 1;
-    if (isImage) this.imageCount += 1;
+    return cost;
+  }
+
+  /**
+   * Consume one unit of the per-site image quota (§6.7, §8.4). Call this ONLY
+   * after an image generation *succeeds* — a failed image attempt still costs
+   * tokens (record those via `recordUsage`) but must not burn the 3-image quota.
+   */
+  recordImage(): void {
+    this.imageCount += 1;
+  }
+
+  /**
+   * Record a completed call's token spend and, when it was a *successful* image,
+   * its image-quota use. Convenience for callers that account for everything at
+   * once on the success path. Returns the call's cost.
+   */
+  record(model: GeminiModelId, usage: TokenUsage, isImage = false): number {
+    const cost = this.recordUsage(model, usage);
+    if (isImage) this.recordImage();
     return cost;
   }
 

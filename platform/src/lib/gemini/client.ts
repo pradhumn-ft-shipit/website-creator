@@ -15,9 +15,14 @@ import { GoogleGenAI } from "@google/genai";
 import {
   assertWithinInputCap,
   assertWithinOutputCap,
+  getBudget,
   type GeminiOperation,
 } from "./budgets";
-import { CostAccumulator, type TokenUsage } from "./cost";
+import {
+  estimateCostUsd,
+  type CostAccumulator,
+  type TokenUsage,
+} from "./cost";
 import {
   GeminiRateLimitError,
   SchemaValidationError,
@@ -143,12 +148,27 @@ export class GeminiClient {
   ): Promise<GenerateJSONResult<T>> {
     const { model, useSearch } = resolveModel(opts.useCase);
     const isImage = opts.useCase === "image";
+    const acc = this.options.costAccumulator;
 
     // Pre-flight input cap (§8.2.7): count the prompt before we spend anything.
     const inputEstimate = estimateTokens(
       `${opts.systemInstruction ?? ""}\n${opts.prompt}`,
     );
     assertWithinInputCap(opts.operation, inputEstimate);
+
+    // §6.7/§8.4 image quota: halt BEFORE dispatch if the site already spent its
+    // 3 images, so a 4th image call never reaches the wire (and never bills).
+    if (isImage) acc?.assertCanGenerateImage();
+
+    // Conservative per-call ceiling for the $2 dollar guard: known input + the
+    // operation's hard output cap — the most one call can produce, since
+    // assertWithinOutputCap rejects anything larger. If even this worst case
+    // would breach the cap we stop before spending rather than discover it after.
+    const { capOutput } = getBudget(opts.operation);
+    const worstCaseCallUsd = estimateCostUsd(model, {
+      inputTokens: inputEstimate,
+      outputTokens: capOutput,
+    });
 
     const maxRepairs = opts.maxRepairAttempts ?? 1;
     let totalIn = 0;
@@ -157,6 +177,11 @@ export class GeminiClient {
     let prompt = opts.prompt;
 
     for (let attempt = 0; attempt <= maxRepairs; attempt++) {
+      // Enforce the $2 cap before EVERY dispatch — repairs spend real tokens too,
+      // and prior attempts are already tallied in `acc`, so this halts a runaway
+      // repair loop instead of letting it overspend.
+      acc?.assertCanSpend(worstCaseCallUsd);
+
       const res = await this.dispatch({
         model,
         prompt,
@@ -168,6 +193,12 @@ export class GeminiClient {
       const usage = readUsage(res);
       totalIn += usage.inputTokens;
       totalOut += usage.outputTokens;
+      // Record THIS attempt's token spend immediately — before the output-cap and
+      // parse checks below, either of which can throw out of the loop. A failed,
+      // over-cap, or repaired attempt was still billed and must count against the
+      // guard; recording only on success undercounts spend (the failure/repair
+      // loop is exactly where per-site cost balloons).
+      acc?.recordUsage(model, usage);
 
       // Output cap is about tokens, not shape — judge it on this response BEFORE
       // parsing, and fail loud (§8.2.7). Re-prompting can't shrink an over-cap
@@ -177,14 +208,19 @@ export class GeminiClient {
       const text = res.text ?? "";
       try {
         const parsed = opts.schema.parse(extractJson(text));
+        // Image quota is consumed only by a *successful* image call — a failed
+        // image attempt billed tokens (above) but must not burn the 3-image cap.
+        if (isImage) acc?.recordImage();
         const aggregate: TokenUsage = {
           inputTokens: totalIn,
           outputTokens: totalOut,
         };
-        const costUsd = this.options.costAccumulator
-          ? this.options.costAccumulator.record(model, aggregate, isImage)
-          : this.estimate(model, aggregate);
-        return { data: parsed, model, usage: aggregate, costUsd };
+        return {
+          data: parsed,
+          model,
+          usage: aggregate,
+          costUsd: estimateCostUsd(model, aggregate),
+        };
       } catch (err) {
         // Parse/validation failures (plain Error or SchemaValidationError) are
         // repairable; everything else above already threw out of the loop.
@@ -198,11 +234,6 @@ export class GeminiClient {
     }
 
     throw new SchemaValidationError(lastIssue);
-  }
-
-  private estimate(model: GeminiModelId, usage: TokenUsage): number {
-    // Local estimate when no accumulator is tracking the site.
-    return new CostAccumulator(Number.POSITIVE_INFINITY).record(model, usage);
   }
 
   private async dispatch(args: {

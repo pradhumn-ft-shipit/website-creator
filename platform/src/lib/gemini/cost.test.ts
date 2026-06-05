@@ -51,6 +51,38 @@ describe("CostAccumulator", () => {
     expect(() => acc.assertCanSpend(0.6)).toThrow(CostBudgetExceededError);
   });
 
+  it("recordUsage tallies tokens + cost + callCount without touching image quota (#1)", () => {
+    const acc = new CostAccumulator();
+    acc.recordUsage(GEMINI_MODELS.flash, { inputTokens: 100, outputTokens: 50 });
+    const snap = acc.snapshot();
+    expect(snap.callCount).toBe(1);
+    expect(snap.totalInputTokens).toBe(100);
+    expect(snap.totalOutputTokens).toBe(50);
+    expect(snap.imageCount).toBe(0);
+    expect(snap.totalUsd).toBeGreaterThan(0);
+  });
+
+  it("recordImage bumps only the image counter — no token spend (#1)", () => {
+    const acc = new CostAccumulator();
+    acc.recordImage();
+    const snap = acc.snapshot();
+    expect(snap.imageCount).toBe(1);
+    expect(snap.callCount).toBe(0);
+    expect(snap.totalUsd).toBe(0);
+  });
+
+  it("record() stays back-compatible: recordUsage + (image ? recordImage)", () => {
+    const acc = new CostAccumulator();
+    acc.record(
+      GEMINI_MODELS.flashImage,
+      { inputTokens: 100, outputTokens: 1290 },
+      true,
+    );
+    const snap = acc.snapshot();
+    expect(snap.callCount).toBe(1);
+    expect(snap.imageCount).toBe(1);
+  });
+
   it("enforces the 3-images-per-site cap (§6.7, §8.4)", () => {
     const acc = new CostAccumulator();
     for (let i = 0; i < 3; i++) {

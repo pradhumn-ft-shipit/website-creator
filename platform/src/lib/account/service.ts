@@ -20,11 +20,15 @@ import {
   type AccountSettings,
 } from "./settings";
 
+// Mirrors the columns selected below. `lead_notification_frequency` and
+// `system_alerts_enabled` are NOT NULL DEFAULT in the migration
+// (20260531150000_account_settings.sql), so they're non-null here; the `??`
+// fallbacks downstream stay as defense-in-depth against a malformed row.
 type AccountRow = {
   full_name: string | null;
   firm_name: string | null;
-  lead_notification_frequency: string | null;
-  system_alerts_enabled: boolean | null;
+  lead_notification_frequency: string;
+  system_alerts_enabled: boolean;
   deletion_requested_at: string | null;
 };
 
@@ -141,18 +145,22 @@ export async function requestAccountDeletion(): Promise<{
   if (error) throw error;
 
   // `data === null` means a deletion was already pending (the `is null` guard
-  // matched nothing) — re-read the existing request time rather than overwriting it.
-  const requestedAt =
-    data?.deletion_requested_at ??
-    (
-      await supabase
-        .from("accounts")
-        .select("deletion_requested_at")
-        .eq("user_id", userId)
-        .single()
-    ).data?.deletion_requested_at;
+  // matched nothing) — re-read the existing request time rather than overwriting
+  // it. Use `.maybeSingle()` and surface a transient DB error instead of letting
+  // it collapse into a misleading "Failed to schedule" below (matches the read in
+  // getAccountSettings).
+  let requestedAt = data?.deletion_requested_at ?? null;
+  if (!requestedAt) {
+    const existing = await supabase
+      .from("accounts")
+      .select("deletion_requested_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    requestedAt = existing.data?.deletion_requested_at ?? null;
+  }
 
-  const state = deletionState(requestedAt ?? null, new Date());
+  const state = deletionState(requestedAt, new Date());
   if (!state.graceEndsAt) {
     throw new Error("Failed to schedule account deletion");
   }

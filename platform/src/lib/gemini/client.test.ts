@@ -6,6 +6,7 @@ import {
   type GenAIResponse,
 } from "./client";
 import {
+  CostBudgetExceededError,
   GeminiRateLimitError,
   SchemaValidationError,
   TokenBudgetExceededError,
@@ -219,5 +220,145 @@ describe("GeminiClient.generateJSON", () => {
     expect(snap.callCount).toBe(2);
     expect(snap.totalInputTokens).toBe(300);
     expect(snap.totalUsd).toBeGreaterThan(0);
+  });
+});
+
+describe("GeminiClient cost guard — accounting + enforcement", () => {
+  // #1 — token spend must be recorded for EVERY attempt that hit the wire, not
+  // just the one that parsed, or the $2 guard undercounts and a site overspends.
+
+  it("records token spend for an over-cap attempt even though it throws (#1)", async () => {
+    // Output (9_999) blows the post_launch_edit cap (1_500) → the call throws,
+    // but it already reached the wire and was billed.
+    const { boundary } = fakeBoundary([
+      { text: JSON.stringify({ title: "x" }), usageMetadata: usage(200, 9_999) },
+    ]);
+    const acc = new CostAccumulator();
+    const client = new GeminiClient(boundary, { costAccumulator: acc });
+
+    await expect(
+      client.generateJSON({
+        useCase: "edit",
+        operation: "post_launch_edit",
+        schema: titleSchema,
+        prompt: "x",
+      }),
+    ).rejects.toBeInstanceOf(TokenBudgetExceededError);
+
+    const snap = acc.snapshot();
+    expect(snap.callCount).toBe(1);
+    expect(snap.totalInputTokens).toBe(200);
+    expect(snap.totalOutputTokens).toBe(9_999);
+    expect(snap.totalUsd).toBeGreaterThan(0);
+  });
+
+  it("records spend for EVERY attempt when all repairs fail (#1)", async () => {
+    const { boundary } = fakeBoundary([
+      { text: "not json", usageMetadata: usage(80, 40) },
+      { text: "still not json", usageMetadata: usage(90, 30) },
+    ]);
+    const acc = new CostAccumulator();
+    const client = new GeminiClient(boundary, { costAccumulator: acc });
+
+    await expect(
+      client.generateJSON({
+        useCase: "validation",
+        operation: "compliance_layer2",
+        schema: titleSchema,
+        prompt: "x",
+      }),
+    ).rejects.toBeInstanceOf(SchemaValidationError);
+
+    const snap = acc.snapshot();
+    // Both the initial call and the repair attempt are billed.
+    expect(snap.callCount).toBe(2);
+    expect(snap.totalInputTokens).toBe(170);
+    expect(snap.totalOutputTokens).toBe(70);
+  });
+
+  it("a failed image attempt bills tokens but does NOT burn image quota (#1)", async () => {
+    const { boundary } = fakeBoundary([
+      { text: "not json", usageMetadata: usage(50, 40) },
+      { text: "still not json", usageMetadata: usage(50, 40) },
+    ]);
+    const acc = new CostAccumulator();
+    const client = new GeminiClient(boundary, { costAccumulator: acc });
+
+    await expect(
+      client.generateJSON({
+        useCase: "image",
+        operation: "image_generation",
+        schema: titleSchema,
+        prompt: "x",
+      }),
+    ).rejects.toBeInstanceOf(SchemaValidationError);
+
+    const snap = acc.snapshot();
+    expect(snap.imageCount).toBe(0); // quota untouched by a failed image
+    expect(snap.totalInputTokens).toBe(100); // but the tokens were billed
+  });
+
+  it("a successful image consumes exactly one image-quota unit", async () => {
+    const { boundary } = fakeBoundary([
+      { text: JSON.stringify({ title: "img" }), usageMetadata: usage(50, 40) },
+    ]);
+    const acc = new CostAccumulator();
+    const client = new GeminiClient(boundary, { costAccumulator: acc });
+
+    await client.generateJSON({
+      useCase: "image",
+      operation: "image_generation",
+      schema: titleSchema,
+      prompt: "x",
+    });
+    expect(acc.snapshot().imageCount).toBe(1);
+  });
+
+  // #2 — the guard must HALT a call before it dispatches once the cap/quota is
+  // reached, not merely record the overage after the fact.
+
+  it("halts at the $2 cap BEFORE dispatching, so nothing is billed (#2)", async () => {
+    const { boundary, calls } = fakeBoundary([
+      {
+        text: JSON.stringify({ title: "never reached" }),
+        usageMetadata: usage(100, 50),
+      },
+    ]);
+    // A cap so low that any further call would exceed it.
+    const acc = new CostAccumulator(0.0001);
+    const client = new GeminiClient(boundary, { costAccumulator: acc });
+
+    await expect(
+      client.generateJSON({
+        useCase: "generation",
+        operation: "full_site_generation",
+        schema: titleSchema,
+        prompt: "x",
+      }),
+    ).rejects.toBeInstanceOf(CostBudgetExceededError);
+    // Proven halt: the SDK boundary was never called.
+    expect(calls).toHaveLength(0);
+    expect(acc.snapshot().callCount).toBe(0);
+  });
+
+  it("halts the 4th image at the quota cap BEFORE dispatching (#2)", async () => {
+    const { boundary, calls } = fakeBoundary([
+      { text: JSON.stringify({ title: "4th" }), usageMetadata: usage(50, 40) },
+    ]);
+    const acc = new CostAccumulator();
+    acc.recordImage(); // site already spent its 3-image quota
+    acc.recordImage();
+    acc.recordImage();
+    const client = new GeminiClient(boundary, { costAccumulator: acc });
+
+    await expect(
+      client.generateJSON({
+        useCase: "image",
+        operation: "image_generation",
+        schema: titleSchema,
+        prompt: "x",
+      }),
+    ).rejects.toBeInstanceOf(CostBudgetExceededError);
+    expect(calls).toHaveLength(0);
   });
 });
