@@ -16,6 +16,12 @@ describe("resolveModel (§8.1 routing)", () => {
     expect(resolveModel("edit").model).toBe(GEMINI_MODELS.flash);
   });
 
+  it("routes intake extraction to Flash without search (comprehension, cheap)", () => {
+    const r = resolveModel("intake");
+    expect(r.model).toBe(GEMINI_MODELS.flash);
+    expect(r.useSearch).toBe(false);
+  });
+
   it("routes image generation to Flash Image", () => {
     expect(resolveModel("image").model).toBe(GEMINI_MODELS.flashImage);
   });

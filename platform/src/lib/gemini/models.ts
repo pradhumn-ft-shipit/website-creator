@@ -12,13 +12,17 @@
  *   edit       → post-launch edit chat (Gemini 2.5 Flash)
  *   image      → image generation, capped (Gemini 2.5 Flash Image / Nano Banana)
  *   research   → compliance research agent, admin tool (Gemini 2.5 Pro + web search)
+ *   intake     → Round-1 field extraction from scrape/uploads (Gemini 2.5 Flash —
+ *                a comprehension/summarisation task, not creative generation, so
+ *                Flash is sufficient and keeps the per-site cost guard happy; §8.3)
  */
 export type GeminiUseCase =
   | "generation"
   | "validation"
   | "edit"
   | "image"
-  | "research";
+  | "research"
+  | "intake";
 
 /** Pinned model ids. Keep in lockstep with PRD §8.1; bump deliberately. */
 export const GEMINI_MODELS = {
@@ -38,6 +42,7 @@ const MODEL_BY_USE_CASE: Record<GeminiUseCase, GeminiModelId> = {
   edit: GEMINI_MODELS.flash,
   image: GEMINI_MODELS.flashImage,
   research: GEMINI_MODELS.pro,
+  intake: GEMINI_MODELS.flash,
 };
 
 export interface ResolvedModel {

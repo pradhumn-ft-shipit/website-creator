@@ -11,7 +11,8 @@ export type GeminiOperation =
   | "full_site_generation"
   | "compliance_layer2"
   | "post_launch_edit"
-  | "image_generation";
+  | "image_generation"
+  | "intake_extraction";
 
 export interface TokenBudget {
   /** Soft planning targets (not enforced; used for telemetry/headroom checks). */
@@ -50,6 +51,19 @@ export const TOKEN_BUDGETS: Record<GeminiOperation, TokenBudget> = {
     targetOutput: 1_500,
     capInput: 3_000,
     capOutput: 2_000,
+  },
+  // NOT in the §8.4 table — added by ticket 012 for the intake.process step.
+  // Input is the concatenated scrape markdown + uploaded-doc text, which for a
+  // real multi-page site is large; the structured Round-1 output (§8.3, ~a dozen
+  // fields with confidence + sources) is small. Runs on Flash (cheap), so we use
+  // a deliberately generous input cap rather than fail real sites at the loud cap.
+  // Note: PDF inline parts add input tokens the pre-flight text estimate cannot
+  // see — the cost accumulator records the true count post-call. Tune in alpha.
+  intake_extraction: {
+    targetInput: 30_000,
+    targetOutput: 3_000,
+    capInput: 120_000,
+    capOutput: 8_000,
   },
 };
 

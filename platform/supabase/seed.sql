@@ -20,3 +20,11 @@ values ('00000000-0000-0000-0000-000000000003',
         '00000000-0000-0000-0000-000000000002',
         'payment_received')
 on conflict (id) do nothing;
+
+-- Intake row for the seeded order, so the 012 pipeline has an existing-site URL
+-- to scrape on a fresh DB (PRD §4.1 step 7 verify path).
+insert into public.intake_data (id, order_id, existing_site_url)
+values ('00000000-0000-0000-0000-000000000004',
+        '00000000-0000-0000-0000-000000000003',
+        'https://example-advisors.com')
+on conflict (order_id) do nothing;

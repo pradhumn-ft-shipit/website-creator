@@ -4,7 +4,22 @@
 > The plan is the collection of tickets in `issues/`. This file is the at-a-glance DAG + status.
 > There are no phases — only "what is currently unblocked." Pick the lowest-ID unblocked ticket.
 
-## Status: 010 Onboarding shell + 011 Waitlist DONE — first UI slice of the build pipeline; **012 (scrape/intake) now unblocked**
+## Status: 012 Scrape + intake.process + docs-upload fallback DONE — the AI pipeline now does real work; **013 + (with 016) 020 next**
+
+012 landed (2026-06-05). The `scrape` + `intake` pipeline stubs are now real: new `lib/firecrawl/` (fetch-boundary
+crawl client) + `lib/intake/` (sufficiency → scrape → docs → extraction → upload). Firecrawl crawl → §4.3
+sufficiency check → either `scrape_complete` (proceed) or `scrape_failed → docs_upload_fallback` (no-site / blocked
+/ thin), soft-failure reason recorded as the transition note. `intake.process` runs Gemini (Flash, new `intake`
+use case) over scrape + uploaded docs → `structured_intake_json` (Round-1 §8.3 fields with confidence + sources +
+brand colors). Docs: TXT/MD inline, **DOCX via mammoth**, **PPTX via jszip**, **PDF native to Gemini** (file parts
+added to 008's client). `POST /api/onboarding/docs` (private `intake-docs` bucket, RLS ownership + service-role
+write). Migration `20260605130000` (unique `order_id` + bucket). Fixed a latent 009 step-id collision bug
+(`${stage}:${to}`). **389 tests** (+55), typecheck/lint/build green. _Live Firecrawl/Gemini/Storage/Inngest runs
+deferred (keys + Docker); advisor-facing upload UI + §4.3 message → 013._ See decisions.md (2026-06-05 · 012).
+
+<details><summary>prior status — 010 + 011</summary>
+
+### 010 Onboarding shell + 011 Waitlist DONE — first UI slice of the build pipeline
 
 010 + 011 just landed (2026-06-05). The onboarding spine (`/onboarding`): industry pick → sub-class confirm →
 simulated $50/mo checkout (§15.4 placeholder, no Stripe dep) → creates the `orders` row + fires `order.created`
@@ -15,6 +30,8 @@ insert via new RLS policy + dedup index, migration `20260605120000`). New deep m
 (pure `steps.ts` + IO `service.ts`) + `lib/waitlist/`. **334 tests** (+36), typecheck/lint/build green, visual-QA
 a11y 100 / bp 100 (temp preview torn down). _Emailed magic-link → 004; skip-with-default affordance → 013; live
 DB round-trip deferred (no Docker)._ **012 (⊣ 008✓,009✓,010✓) is now fully unblocked** — the AI pipeline starts.
+
+</details>
 
 ## Status (prior): 006 Layer-2 validator + ruleset loader DONE — the compliance gate is live; unblocks 020/021/029/031/034
 
@@ -385,12 +402,13 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 - PRD read end-to-end; v1 DAG defined.
 
 ## Blocked
-- Now unblocked & pickable: **004, 012, 016, 013(after 012), 015(after 013), 037**. (010 + 011 done.) **012 + 016**
-  are the last two blockers on **020** (generation) — clear both and the AI pipeline is fully unblocked. **006 done** → **020** (generation) now
-  needs only **012 + 016**; **035** ⊣ 006✓+033✓ is now fully unblocked; **029/031/034** clear their 006 dependency
-  (each still gated by its own other blockers: 034 ⊣ 020; 029 ⊣ 020/024/025; 031 ⊣ 016). Still blocked: everything
+- Now unblocked & pickable: **004, 016, 013 (⊣ 012✓), 037**. (012 done.) **016** is now the *last* blocker on
+  **020** (generation): 020 ⊣ 012✓ + 016 — build the template shared lib (016) and the AI pipeline's generation
+  stage is fully unblocked. **013** (round-1 confirm / round-2 / asset-upload UI) consumes 012's
+  `structured_intake_json` + the docs-upload API and is now pickable; **015** ⊣ 013. **035** ⊣ 006✓+033✓ fully
+  unblocked. **029/031/034** still gated (034 ⊣ 020; 029 ⊣ 020/024/025; 031 ⊣ 016). Still blocked: everything
   else — see `⊣ blocked by` above.
-  (001, 002, 003, 005, 006, 007, 008, 009, 00A, 010, 011, 027, 033 done.)
+  (001, 002, 003, 005, 006, 007, 008, 009, 00A, 010, 011, 012, 027, 033 done.)
 
 ## Notes / external prerequisites (PRD §17.5)
 - GitHub App registration → needed for 024.

@@ -21,6 +21,7 @@ import {
   layer3Required,
 } from "@/lib/orders/state-machine";
 import { transitionOrder, escalateOrderFailure } from "@/lib/orders/transitions";
+import { runScrape, processIntake, type ScrapeOutcome } from "@/lib/intake";
 
 import { inngest } from "./client";
 import { isRateLimitError } from "./errors";
@@ -116,6 +117,13 @@ interface RunPipelineArgs {
   client: AdminClient;
   orderId: string;
   accountId: string;
+  /**
+   * The real scrape/intake step bodies (012), injectable so tests drive the
+   * pipeline without a live Firecrawl / Gemini / Storage. Default to the real
+   * implementations; the Inngest wrapper relies on the defaults.
+   */
+  scrape?: (deps: { client: AdminClient; orderId: string }) => Promise<ScrapeOutcome>;
+  intake?: (deps: { client: AdminClient; orderId: string }) => Promise<unknown>;
 }
 
 /**
@@ -127,14 +135,18 @@ export async function runPipeline({
   step,
   client,
   orderId,
+  scrape = runScrape,
+  intake = processIntake,
 }: RunPipelineArgs): Promise<void> {
-  const advance = (stage: PipelineStage, to: OrderState) =>
+  // Step ids are `${stage}:${to}` so every transition is a DISTINCT Inngest step
+  // — same-id steps are memoised and would silently skip re-execution, which is
+  // why a stage advancing through several states needs a unique id per state.
+  const advance = (stage: PipelineStage, to: OrderState, note?: string) =>
     step.run(
-      stage,
+      `${stage}:${to}`,
       async () => {
         try {
-          // STUB: downstream tickets (010–021) do the real work here.
-          return await transitionOrder(client, orderId, to);
+          return await transitionOrder(client, orderId, to, note);
         } catch (err) {
           return handleStepFailure(client, orderId, stage, err);
         }
@@ -142,13 +154,51 @@ export async function runPipeline({
       { retries: STEP_RETRY_POLICY[stage] },
     );
 
-  // payment_received → scraping (scrape stub)
+  // payment_received → scraping
   await advance("scrape", "scraping");
-  // scraping → scrape_complete (stub assumes success; real step branches to
-  // scrape_failed → docs_upload_fallback on exhaustion — see §13.2)
-  await advance("scrape", "scrape_complete");
 
-  // intake: scrape_complete → onboarding_in_progress → onboarding_complete
+  // scrape.run (012): crawl + sufficiency. Returns the route; a slim result keeps
+  // the step output small (we don't carry the full crawl through memoisation).
+  const outcome = (await step.run(
+    "scrape.run",
+    async () => {
+      try {
+        const result = await scrape({ client, orderId });
+        return result.route === "proceed"
+          ? { route: "proceed" as const }
+          : { route: "docs_fallback" as const, reason: result.reason };
+      } catch (err) {
+        return handleStepFailure(client, orderId, "scrape", err);
+      }
+    },
+    { retries: STEP_RETRY_POLICY.scrape },
+  )) as { route: "proceed" } | { route: "docs_fallback"; reason: string };
+
+  if (outcome.route === "proceed") {
+    await advance("scrape", "scrape_complete");
+  } else {
+    // §4.2 (no site) / §4.3 (insufficient/blocked): recover into the docs-upload
+    // branch. The reason is recorded on the transition as the soft-failure event
+    // (§4.3, internal analytics) via order_state_events.
+    await advance("scrape", "scrape_failed", `docs-upload fallback: ${outcome.reason}`);
+    await advance("scrape", "docs_upload_fallback");
+  }
+
+  // intake.process (012): extract Round-1 fields from scrape + uploads into
+  // structured_intake_json. Runs on both routes; does not transition state.
+  await step.run(
+    "intake.process",
+    async () => {
+      try {
+        return await intake({ client, orderId });
+      } catch (err) {
+        return handleStepFailure(client, orderId, "intake", err);
+      }
+    },
+    { retries: STEP_RETRY_POLICY.intake },
+  );
+
+  // Both routes converge: → onboarding_in_progress → onboarding_complete
   await advance("intake", "onboarding_in_progress");
   await advance("intake", "onboarding_complete");
 

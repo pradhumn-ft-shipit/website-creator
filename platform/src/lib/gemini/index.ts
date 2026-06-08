@@ -8,6 +8,7 @@ export {
   geminiClient,
   type GenAIBoundary,
   type GenAIResponse,
+  type GeminiFilePart,
   type OutputSchema,
   type GenerateJSONOptions,
   type GenerateJSONResult,

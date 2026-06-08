@@ -25,6 +25,19 @@ describe("token budgets (§8.4)", () => {
     expect(TOKEN_BUDGETS.post_launch_edit.capOutput).toBe(1_500);
   });
 
+  it("budgets intake extraction with a large input cap (whole-site scrape feed)", () => {
+    const b = getBudget("intake_extraction");
+    // Not in the §8.4 table — added by 012. A multi-page scrape can be large on
+    // the input side; the structured Round-1 output is small. Flash is cheap, so
+    // a generous input cap keeps real sites from failing the loud cap check.
+    expect(b.capInput).toBeGreaterThanOrEqual(50_000);
+    expect(b.capOutput).toBeLessThanOrEqual(b.capInput);
+    expect(() => assertWithinInputCap("intake_extraction", b.capInput)).not.toThrow();
+    expect(() => assertWithinInputCap("intake_extraction", b.capInput + 1)).toThrow(
+      TokenBudgetExceededError,
+    );
+  });
+
   it("allows input at exactly the cap", () => {
     expect(() => assertWithinInputCap("full_site_generation", 50_000)).not.toThrow();
   });

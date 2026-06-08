@@ -72,6 +72,19 @@ export interface OutputSchema<T> {
   parse(value: unknown): T;
 }
 
+/**
+ * A binary document sent inline alongside the prompt (PRD §4.2 — uploaded docs;
+ * §4.3 fallback). Gemini reads PDF + plain-text natively, so the intake step
+ * passes those through here instead of extracting their text locally. `data` is
+ * base64 (no data: prefix). Caps: pre-flight input counting is text-only, so
+ * file tokens are billed/recorded post-call from usageMetadata (see budgets.ts).
+ */
+export interface GeminiFilePart {
+  mimeType: string;
+  /** base64-encoded file bytes (no `data:` URI prefix). */
+  data: string;
+}
+
 export interface GenerateJSONOptions<T> {
   useCase: GeminiUseCase;
   operation: GeminiOperation;
@@ -79,6 +92,8 @@ export interface GenerateJSONOptions<T> {
   prompt: string;
   /** Compliance rulebook etc. lives here, NOT in the prompt (§8.2.2). */
   systemInstruction?: string;
+  /** Inline documents (PDF / text) sent with the prompt; §4.2 intake. */
+  files?: GeminiFilePart[];
   /** Override the default single repair attempt (§8.2.3). */
   maxRepairAttempts?: number;
 }
@@ -185,6 +200,7 @@ export class GeminiClient {
       const res = await this.dispatch({
         model,
         prompt,
+        files: opts.files,
         systemInstruction: opts.systemInstruction,
         jsonSchema: opts.schema.jsonSchema,
         useSearch,
@@ -239,6 +255,7 @@ export class GeminiClient {
   private async dispatch(args: {
     model: GeminiModelId;
     prompt: string;
+    files?: GeminiFilePart[];
     systemInstruction?: string;
     jsonSchema: unknown;
     useSearch: boolean;
@@ -256,10 +273,25 @@ export class GeminiClient {
       // rely on schema parse + repair for the research agent.
       delete config.responseMimeType;
     }
+    // With files attached we build an explicit user-turn parts array (text +
+    // inlineData); with none we keep the simple string form the SDK accepts as a
+    // single user turn — preserving back-compat for every existing caller.
+    const contents =
+      args.files && args.files.length > 0
+        ? {
+            role: "user",
+            parts: [
+              { text: args.prompt },
+              ...args.files.map((f) => ({
+                inlineData: { mimeType: f.mimeType, data: f.data },
+              })),
+            ],
+          }
+        : args.prompt;
     try {
       return await this.sdk.models.generateContent({
         model: args.model,
-        contents: args.prompt,
+        contents,
         config,
       });
     } catch (err) {

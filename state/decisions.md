@@ -955,3 +955,74 @@ payment / handoff screens all verified; mobile single-column stack confirmed.
 **Green:** `npm test` **334** (+36: 13 steps + 6 waitlist-validate + 9 onboarding-service + 3 waitlist-service +
 5 flow frontend), `npm run typecheck`, `npm run lint`, `npm run build` (`/onboarding` + 3 API routes compile
 dynamic). **010 + 011 Done.** 010 unblocks **012** (scrape/intake) → the AI pipeline; also **013, 015**.
+
+## 2026-06-05 — 012 Scrape (Firecrawl) + intake.process + docs-upload fallback (PRD §4.1 step 7, §4.2, §4.3, §8.3, §9.2)
+
+The two pipeline stubs `scrape` + `intake` (009) are now real work. New deep module `lib/intake/`
+(sufficiency → scrape → docs → extraction → upload) + a `lib/firecrawl/` client; the Gemini layer (008)
+grew an `intake` use case + multimodal file parts. Owner decisions front-loaded (the two AskUserQuestion
+forks): **doc extraction = Gemini-native PDF + local parsers (mammoth/jszip) for DOCX/PPTX**; **upload
+surface = API + storage now, advisor-facing upload UI deferred to 013** (013 owns the round-1/round-2/assets
+screen, so building it here would be thrown away).
+
+- **Firecrawl via a thin fetch boundary, NOT the SDK.** `FirecrawlClient(http, apiKey)` injects a `fetch`-like
+  `HttpBoundary` (no new dependency — `fetch` is built-in). Client owns the v1 async crawl flow (POST start →
+  poll status) with an injected `sleep` so tests run instantly. We **crawl** (multi-page), not single-page
+  scrape, because the §4.3 sufficiency check needs page count to tell a real site from a one-pager/SPA.
+- **Rate-limit vs hard-failure split (CLAUDE.md fallback policy).** A 429 → `FirecrawlRateLimitError` (carries
+  the duck-typed `isRateLimit`/`service`/`endpoint` markers `lib/inngest/errors.ts#isRateLimitError` already
+  recognises) → **rethrown**, so the pipeline logs to `state/rate-limits.md` and Inngest backs off + retries
+  (NOT docs-fallback). A hard failure (anti-bot/5xx/job `failed`) → `FirecrawlError` → **docs-upload fallback**
+  (§4.3). Insufficient content (single-page/blocked/thin) also → fallback. Distinct paths, both tested.
+- **Sufficiency is a pure, named-threshold check (`isContentSufficient`, §4.3).** ≥2 content-bearing pages
+  (≥200 chars each) and ≥600 total chars, else `{no_pages|single_page|insufficient_text}`. Reason feeds the
+  soft-failure event. Thresholds are tunable constants (alpha).
+- **Soft-failure event = the `scrape_failed` transition's note** (order_state_events, 033). The pipeline routes
+  `scraping → scrape_failed (note: "docs-upload fallback: <reason>") → docs_upload_fallback`; both the §4.2
+  no-site path (`no_url`) and §4.3 failures share this branch (the state machine only exits `scraping` via
+  `scrape_complete | scrape_failed`). The `scrape_failed` name is slightly off for the deliberate no-site case,
+  but its only legal exit is `docs_upload_fallback`, which is exactly the destination — acceptable for v1.
+  Added an optional `note` param to `transitionOrder` for this.
+- **Doc extraction strategy (owner-decided).** TXT/MD decoded inline; **DOCX via `mammoth`**, **PPTX via `jszip`
+  + `<a:t>` run regex** (both in-memory, no temp files — chosen over `officeparser` to avoid fs/temp-file
+  behavior and keep parsing unit-testable); **PDF handed to Gemini natively** as an inline file part (better
+  than a text-layer scrape; scanned PDFs have no text layer). New deps: `mammoth@1.12`, `jszip@3.10` (the 3
+  pre-existing `npm audit` moderates are postcss/next, unrelated). v1 is **text-only** — no image extraction
+  from docs (§4.2).
+- **GeminiClient gained inline file parts** (`files?: GeminiFilePart[]`): with files it builds a `{role,parts}`
+  contents array (text + `inlineData`), else keeps the bare-string form (back-compat, tested). **Caveat:**
+  pre-flight input-token counting is text-only, so PDF tokens are billed/recorded post-call from
+  `usageMetadata` — documented in `budgets.ts`. New `intake` use case → **Flash** (extraction is comprehension,
+  not creative generation — cheap, keeps the $2/site guard happy) + new `intake_extraction` operation budget
+  (NOT in the §8.4 table; generous 120k input cap because a whole-site scrape is large, small output).
+- **Round-1 schema (§8.3) is lenient-parse.** Every field is `{value, confidence (0–1), sources[]}`; `parse`
+  throws only on a non-object (so the repair loop re-prompts) and otherwise coerces each field, defaulting
+  missing/garbled ones to `{null, 0, []}`. "Not found" is confidence 0, not a failure — this feeds 013's
+  confirm-or-correct UI. Brand colors extracted here too (feed 015 previews / voice).
+- **New migration `20260605130000_intake_scrape_docs.sql`:** `unique (order_id)` on `intake_data` (the
+  "one intake per order" invariant the codebase already assumed — lets scrape/intake/upload **upsert**
+  idempotently under Inngest retries) + a **private `intake-docs` Storage bucket** (uploads are server-side via
+  service-role, which bypasses Storage RLS, so no per-object policy; private because brochures may carry PII).
+  No column change → `database.types.ts` unchanged. Seed gains an `intake_data` row (URL) for the verify path.
+- **Upload route ownership model.** `POST /api/onboarding/docs` (multipart) authenticates + resolves the
+  advisor's order through the **cookie-bound RLS client** (only returns rows they own), then writes via the
+  **service-role admin client** (private bucket). Logic lives in `uploadDocsForUser` (unit-tested) so the route
+  is thin glue. Validates all 5 formats + 25MB/file cap; appends (dedupes) onto `uploaded_doc_paths`.
+- **Fixed a latent 009 bug while here:** the stub used the *stage* as the Inngest step id, so a stage advancing
+  through several states reused one id — real Inngest memoises same-id steps and would silently skip the later
+  transitions. `advance` now uses `${stage}:${to}` (unique per transition). No behavior change in tests; makes
+  the whole pipeline correct under real Inngest. `runPipeline` now injects `scrape`/`intake` (default to the
+  real bodies) so tests drive it without live Firecrawl/Gemini/Storage.
+
+**Deferred (`[~]`).** (1) **Live external runs** — a real Firecrawl crawl, a live Gemini extraction, a real
+Storage write, and the end-to-end Inngest pipeline — all need API keys + Docker/Inngest dev not available this
+session (same constraint as 001–009); every contract is unit-proven against injected stubs/fixtures, and the
+seed + slim step output make the live round-trip a key-only follow-up. (2) **The advisor-facing §4.3 message +
+upload screen** land in **013** (this ticket records the soft-failure reason + exposes the upload API the UI
+calls). (3) **Scrape-content truncation for pathological huge sites** — we fail loud at the 120k input cap
+(§8.2.7) rather than silently truncate; revisit in alpha if real RIA sites trip it.
+
+**Green:** `npm test` **389** (+55: gemini files/budget/model, firecrawl 7, sufficiency 6, scrape 6, docs 7,
+upload 9, schema 7, extraction 4, upload-service 3, pipeline branch 2), `npm run typecheck`, `npm run lint`,
+`npm run build` (`/api/onboarding/docs` compiles dynamic). **012 Done — unblocks 013 + 020** (020 still needs
+**016**). No UI in 012 → no preview URL; verify locally per the catch-up commands once keys/Docker are present.

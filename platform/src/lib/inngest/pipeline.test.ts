@@ -8,11 +8,12 @@ import {
   handleStepFailure,
 } from "./pipeline";
 
-/** Mocked admin client recording transitions + alerts. */
+/** Mocked admin client recording transitions, alerts, and state events. */
 function makeClient(startStatus = "payment_received") {
   let status = startStatus;
   const transitions: string[] = [];
   const alerts: Array<Record<string, unknown>> = [];
+  const events: Array<Record<string, unknown>> = [];
 
   const client = {
     from(table: string) {
@@ -30,6 +31,14 @@ function makeClient(startStatus = "payment_received") {
           },
         };
       }
+      if (table === "order_state_events") {
+        return {
+          insert: async (payload: Record<string, unknown>) => {
+            events.push(payload);
+            return { data: null, error: null };
+          },
+        };
+      }
       return {
         insert: async (payload: Record<string, unknown>) => {
           alerts.push(payload);
@@ -39,8 +48,12 @@ function makeClient(startStatus = "payment_received") {
     },
   };
 
-  return { client, transitions, alerts, getStatus: () => status };
+  return { client, transitions, alerts, events, getStatus: () => status };
 }
+
+/** Default injected step bodies: a sufficient scrape + a no-op intake. */
+const proceedScrape = async () => ({ route: "proceed" as const, result: {} as never });
+const noopIntake = async () => ({});
 
 /** Mocked Inngest step: runs the fn inline, ignoring opts. */
 function makeStep() {
@@ -89,8 +102,8 @@ describe("retry policy table (§13.2)", () => {
 });
 
 describe("runPipeline (happy path through stubs)", () => {
-  it("advances the order from payment_received to dns_monitoring", async () => {
-    const { client, getStatus } = makeClient();
+  it("advances the order from payment_received to dns_monitoring (scrape proceeds)", async () => {
+    const { client, getStatus, transitions } = makeClient();
     const step = makeStep();
 
     await runPipeline({
@@ -100,11 +113,61 @@ describe("runPipeline (happy path through stubs)", () => {
       client: client as any,
       orderId: "order-1",
       accountId: "acct-1",
+      scrape: proceedScrape,
+      intake: noopIntake,
     });
 
     expect(getStatus()).toBe("dns_monitoring");
-    // every stub ran via step.run
+    // The proceed route goes through scrape_complete, never the failure branch.
+    expect(transitions).toContain("scrape_complete");
+    expect(transitions).not.toContain("scrape_failed");
     expect(step.run).toHaveBeenCalled();
+  });
+
+  it("routes an insufficient scrape into the docs-upload fallback (§4.3)", async () => {
+    const { client, getStatus, transitions, events } = makeClient();
+    const step = makeStep();
+    const scrape = async () => ({ route: "docs_fallback" as const, reason: "single_page" as const });
+    const intake = vi.fn(noopIntake);
+
+    await runPipeline({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      step: step as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client: client as any,
+      orderId: "order-1",
+      accountId: "acct-1",
+      scrape,
+      intake,
+    });
+
+    // Failure branch taken, then converges and still reaches the end.
+    expect(transitions).toContain("scrape_failed");
+    expect(transitions).toContain("docs_upload_fallback");
+    expect(transitions).not.toContain("scrape_complete");
+    expect(getStatus()).toBe("dns_monitoring");
+    // The soft-failure reason is recorded as a state-event note (§4.3 analytics).
+    const failEvent = events.find((e) => e.to_status === "scrape_failed");
+    expect(failEvent?.note).toContain("single_page");
+    // intake.process still runs on the fallback route.
+    expect(intake).toHaveBeenCalledTimes(1);
+  });
+
+  it("still runs intake.process on the proceed route", async () => {
+    const { client } = makeClient();
+    const step = makeStep();
+    const intake = vi.fn(noopIntake);
+    await runPipeline({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      step: step as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client: client as any,
+      orderId: "order-1",
+      accountId: "acct-1",
+      scrape: proceedScrape,
+      intake,
+    });
+    expect(intake).toHaveBeenCalledTimes(1);
   });
 });
 

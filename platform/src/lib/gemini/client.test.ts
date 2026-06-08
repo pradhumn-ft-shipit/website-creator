@@ -80,6 +80,47 @@ describe("GeminiClient.generateJSON", () => {
     expect(calls[0].model).toBe(GEMINI_MODELS.pro);
   });
 
+  it("forwards inline file parts alongside the prompt (PDF intake, §4.2)", async () => {
+    const { boundary, calls } = fakeBoundary([
+      { text: JSON.stringify({ title: "FromPdf" }), usageMetadata: usage(100, 50) },
+    ]);
+    const client = new GeminiClient(boundary);
+
+    const result = await client.generateJSON({
+      useCase: "intake",
+      operation: "intake_extraction",
+      schema: titleSchema,
+      prompt: "extract fields",
+      files: [{ mimeType: "application/pdf", data: "QkFTRTY0" }],
+    });
+
+    expect(result.data).toEqual({ title: "FromPdf" });
+    // contents became a parts array: the prompt text + the inline PDF part.
+    const contents = calls[0].contents as {
+      role: string;
+      parts: Array<Record<string, unknown>>;
+    };
+    expect(contents.role).toBe("user");
+    expect(contents.parts).toEqual([
+      { text: "extract fields" },
+      { inlineData: { mimeType: "application/pdf", data: "QkFTRTY0" } },
+    ]);
+  });
+
+  it("sends a bare string when no files are attached (back-compat)", async () => {
+    const { boundary, calls } = fakeBoundary([
+      { text: JSON.stringify({ title: "x" }), usageMetadata: usage(10, 5) },
+    ]);
+    const client = new GeminiClient(boundary);
+    await client.generateJSON({
+      useCase: "intake",
+      operation: "intake_extraction",
+      schema: titleSchema,
+      prompt: "no files",
+    });
+    expect(calls[0].contents).toBe("no files");
+  });
+
   it("repairs malformed output with a second call, then succeeds (§8.2.3)", async () => {
     const { boundary } = fakeBoundary([
       { text: "Sure! Here is your JSON: {bad", usageMetadata: usage(80, 40) },

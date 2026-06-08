@@ -29,6 +29,7 @@ export async function transitionOrder(
   client: AdminClient,
   orderId: string,
   to: OrderState,
+  note?: string,
 ): Promise<OrderState> {
   const { data, error } = await client
     .from("orders")
@@ -67,7 +68,7 @@ export async function transitionOrder(
   // order's status is already persisted, and history is an audit aid, not the
   // source of truth — a failed insert must not fail (or roll back) the
   // transition, same posture as escalateOrderFailure's own write errors.
-  await recordStateEvent(client, orderId, from, next);
+  await recordStateEvent(client, orderId, from, next, note);
 
   return next;
 }
