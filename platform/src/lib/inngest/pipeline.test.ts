@@ -51,9 +51,10 @@ function makeClient(startStatus = "payment_received") {
   return { client, transitions, alerts, events, getStatus: () => status };
 }
 
-/** Default injected step bodies: a sufficient scrape + a no-op intake. */
+/** Default injected step bodies: a sufficient scrape + a no-op intake/iapd. */
 const proceedScrape = async () => ({ route: "proceed" as const, result: {} as never });
 const noopIntake = async () => ({});
+const skippedIapd = async () => ({ route: "skipped" as const, reason: "no_crd" as const });
 
 /** Mocked Inngest step: runs the fn inline, ignoring opts. */
 function makeStep() {
@@ -115,6 +116,7 @@ describe("runPipeline (happy path through stubs)", () => {
       accountId: "acct-1",
       scrape: proceedScrape,
       intake: noopIntake,
+      iapd: skippedIapd,
     });
 
     expect(getStatus()).toBe("dns_monitoring");
@@ -139,6 +141,7 @@ describe("runPipeline (happy path through stubs)", () => {
       accountId: "acct-1",
       scrape,
       intake,
+      iapd: skippedIapd,
     });
 
     // Failure branch taken, then converges and still reaches the end.
@@ -166,8 +169,60 @@ describe("runPipeline (happy path through stubs)", () => {
       accountId: "acct-1",
       scrape: proceedScrape,
       intake,
+      iapd: skippedIapd,
     });
     expect(intake).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the injected iapd step and does not fail the order on an upload_prompt outcome", async () => {
+    const { client, getStatus } = makeClient();
+    const step = makeStep();
+    const iapd = vi.fn(async () => ({
+      route: "upload_prompt" as const,
+      reason: "iapd_and_scrape_unavailable" as const,
+    }));
+
+    await runPipeline({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      step: step as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client: client as any,
+      orderId: "order-1",
+      accountId: "acct-1",
+      scrape: proceedScrape,
+      intake: noopIntake,
+      iapd,
+    });
+
+    expect(iapd).toHaveBeenCalledTimes(1);
+    expect(iapd).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: "order-1", accountId: "acct-1" }),
+    );
+    // A missing IAPD document is a soft outcome — the order still completes.
+    expect(getStatus()).toBe("dns_monitoring");
+  });
+
+  it("escalates to admin_alerts and halts when the iapd step throws (rate limit propagated)", async () => {
+    const { client, alerts } = makeClient();
+    const step = makeStep();
+    const iapd = async () => {
+      throw new Error("iapd exploded");
+    };
+
+    await expect(
+      runPipeline({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        step: step as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        client: client as any,
+        orderId: "order-1",
+        accountId: "acct-1",
+        scrape: proceedScrape,
+        intake: noopIntake,
+        iapd,
+      }),
+    ).rejects.toThrow("iapd exploded");
+    expect(alerts).toHaveLength(1);
   });
 });
 
