@@ -52,6 +52,15 @@ export interface GenAIBoundary {
 
 export interface GenAIResponse {
   text?: string;
+  /** Present on image responses: inline media rides on the candidate parts. */
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+        inlineData?: { mimeType?: string; data?: string };
+      }>;
+    };
+  }>;
   usageMetadata?: {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
@@ -110,6 +119,42 @@ export interface GenerateJSONResult<T> {
 export interface GeminiClientOptions {
   /** Per-site cost guard; pass one per order to enforce the <$2 cap. */
   costAccumulator?: CostAccumulator;
+}
+
+export interface GenerateImageOptions {
+  /**
+   * The image subject prompt. Callers MUST have already passed this through the
+   * §6.7 subject guard (see `lib/images/guard`) before reaching here — this
+   * method renders whatever it is told, so the no-people prohibition is enforced
+   * at the single image call site.
+   */
+  prompt: string;
+  /** Optional style/system steering (e.g. "flat, no text, muted palette"). */
+  systemInstruction?: string;
+}
+
+export interface GenerateImageResult {
+  /** base64-encoded image bytes (no `data:` prefix). */
+  data: string;
+  mimeType: string;
+  model: GeminiModelId;
+  usage: TokenUsage;
+  costUsd: number;
+}
+
+/** Pull the first inline image part out of an image-model response, if any. */
+function extractImage(res: GenAIResponse): { data: string; mimeType: string } | null {
+  for (const cand of res.candidates ?? []) {
+    for (const part of cand.content?.parts ?? []) {
+      if (part.inlineData?.data) {
+        return {
+          data: part.inlineData.data,
+          mimeType: part.inlineData.mimeType ?? "image/png",
+        };
+      }
+    }
+  }
+  return null;
 }
 
 function readUsage(res: GenAIResponse): TokenUsage {
@@ -250,6 +295,72 @@ export class GeminiClient {
     }
 
     throw new SchemaValidationError(lastIssue);
+  }
+
+  /**
+   * Generate a single image via the flash-image model (§6.7, capped). Enforces
+   * the same guardrails as `generateJSON`: input cap, the 3-image-per-site quota
+   * (halts the 4th BEFORE dispatch), and the $2 cost cap. Returns inline image
+   * bytes; there is no repair loop — an image response either carries media or
+   * it doesn't. The subject prohibition (§6.7) is enforced by the caller's guard
+   * before this method is ever reached.
+   */
+  async generateImage(
+    opts: GenerateImageOptions,
+  ): Promise<GenerateImageResult> {
+    const { model } = resolveModel("image");
+    const operation: GeminiOperation = "image_generation";
+    const acc = this.options.costAccumulator;
+
+    const inputEstimate = estimateTokens(
+      `${opts.systemInstruction ?? ""}\n${opts.prompt}`,
+    );
+    assertWithinInputCap(operation, inputEstimate);
+
+    // Halt the 4th image before it ever reaches the wire (§6.7/§8.4 quota).
+    acc?.assertCanGenerateImage();
+
+    const { capOutput } = getBudget(operation);
+    const worstCaseUsd = estimateCostUsd(model, {
+      inputTokens: inputEstimate,
+      outputTokens: capOutput,
+    });
+    acc?.assertCanSpend(worstCaseUsd);
+
+    const config: Record<string, unknown> = { responseModalities: ["IMAGE"] };
+    if (opts.systemInstruction) config.systemInstruction = opts.systemInstruction;
+
+    let res: GenAIResponse;
+    try {
+      res = await this.sdk.models.generateContent({
+        model,
+        contents: opts.prompt,
+        config,
+      });
+    } catch (err) {
+      if (isRateLimit(err)) {
+        throw new GeminiRateLimitError(model, { cause: err });
+      }
+      throw err;
+    }
+
+    const usage = readUsage(res);
+    acc?.recordUsage(model, usage); // bill tokens even if no image comes back
+    assertWithinOutputCap(operation, usage.outputTokens);
+
+    const image = extractImage(res);
+    if (!image) {
+      throw new SchemaValidationError("image response carried no inline image");
+    }
+    acc?.recordImage(); // consume one quota unit only on success
+
+    return {
+      data: image.data,
+      mimeType: image.mimeType,
+      model,
+      usage,
+      costUsd: estimateCostUsd(model, usage),
+    };
   }
 
   private async dispatch(args: {
