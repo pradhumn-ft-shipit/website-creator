@@ -1057,3 +1057,67 @@ B Vercel deploy+launch, C DNS monitor cron) and a note to land them as separate 
 prose across surviving tickets (done + remaining) to point only at surviving IDs. plan.md DAG, "Unblocked
 right now," and "Blocked" sections rewritten to the 16-ticket shape. Critical path is now 016 → 020 → 024 →
 (029, 032). Unblocked now: 004, 013, 014, 016, 022, 035, 037.
+
+---
+
+## 2026-07-05 — 014 SEC IAPD auto-pull step (PRD §5.4, §5.5)
+
+Built in an isolated worktree (`ticket/014-iapd-autopull`). One deep module `platform/src/lib/iapd/`,
+same shape as 012's `lib/firecrawl/` + `lib/intake/`: a thin injected-HTTP client + an IO service layer,
+wired into 009's pipeline as the `iapd` step's real body (replacing the no-op stub).
+
+- **`IapdClient` mirrors the Firecrawl posture exactly.** `fetchFirmRecord(crd)` hits the public IAPD
+  firm-search endpoint (`api.adviserinfo.sec.gov/search/firm`, no API key — it's public SEC data) and
+  normalises each returned brochure into an `{kind: "adv2a"|"adv2b"|"crs", filename, url}` document;
+  `downloadDocument(doc)` pulls the raw PDF bytes. **The exact IAPD response shape is a best-effort
+  mapping, not verified against a live call this session** (no live IAPD access, same constraint as
+  001–012) — it's fully gated behind the injected `IapdHttpBoundary` so pointing it at the real endpoint
+  later is a field-name-confirmation exercise, not a rewrite. A 429 → retryable `IapdRateLimitError`
+  (009 seam, same duck-typed `isRateLimit` marker as Firecrawl/Gemini); anything else (not found,
+  malformed, 5xx, failed download) → non-retryable `IapdError`, which the service layer treats as
+  "IAPD unavailable" and walks the §5.4 fallback chain.
+- **Fallback chain reuses 012's crawl instead of re-scraping.** Rather than a second Firecrawl call,
+  `scrape-fallback.ts#findComplianceDocsInCrawl` scans the pages 012's scrape step already crawled
+  (`intake_data.scrape_result_json`) for `<a href="*.pdf">` links whose text/URL name a Form CRS or ADV
+  Part 2A/2B document, via three regexes checked in CRS → 2B → 2A order (2B checked before the looser 2A
+  pattern, which matches on the bare word "adv"). Zero-cost re-use of data already fetched during the same
+  order's pipeline run. **Distinguishes two "empty" cases** so the fallback only fires on genuine IAPD
+  unavailability: if `fetchFirmRecord` *throws*, the scrape fallback runs; if it *succeeds* but the firm
+  simply has no brochures on file, that's treated as its own terminal outcome (`no_documents_found`) rather
+  than triggering a scrape — a valid IAPD response with zero brochures isn't "IAPD unavailable."
+- **New public Storage bucket, `customer-assets`** (migration `20260705120000`), distinct from 012's
+  private `intake-docs`. ADV/CRS PDFs are public SEC filings the generated site's footer must link to
+  directly (§5.4 point 4) — no signed-URL indirection needed, so 024's build/assembly can derive the
+  footer link straight off `assets.storage_path` via `getPublicUrl`. `assets.type` already had `doc_adv`/
+  `doc_crs` in 002's CHECK constraint — no schema change there.
+- **Manual re-fetch reuses the existing `assets.replaced_from_id` audit chain** (from 002) instead of a
+  new "current" flag or delete-then-insert: `fetchIapdDocuments` looks up the most recent asset of the
+  same type for the account and threads it as `replaced_from_id` on the new row. Old versions stay queryable.
+- **One function serves both callers.** `fetchIapdDocuments({ client, accountId, orderId? })` — the pipeline
+  step passes `orderId` (needed only for the scrape-fallback's crawl read); the dashboard's future "Refresh
+  from SEC IAPD" button (030) calls the identical export with just `accountId`, re-reading `crd_number`
+  fresh each time (no re-fetch cron — re-fetch is manual only, per the ticket's explicit note).
+- **Rate-limit log reused as the generic "external API unavailable" log**, not narrowly rate-limit-only.
+  `state/rate-limits.md` already documents "SEC IAPD unavailable → fall back to scrape, then to direct
+  upload" as one of its own fallback rows (alongside Resend bounce/complaint, also non-rate-limit) — so
+  `appendRateLimitLog` with `code:"iapd_unavailable"` is the intended reuse, not a hack. A genuine 429 is
+  logged and handled separately by 009's existing rate-limit path (transient, Inngest backs off — never
+  treated as "unavailable").
+- **`runPipeline`'s `accountId` param, dead since 009, is now used.** 009 threaded `accountId` through
+  `RunPipelineArgs` but no step read it (stub steps didn't need it); the iapd step is the first real
+  consumer.
+- **Pipeline test fixture updated for the new default.** Existing `pipeline.test.ts` cases had to start
+  injecting a `skippedIapd` stub — the previously-stubbed `iapd` step now defaults to the real
+  `fetchIapdDocuments`, which would otherwise hit the mocked client's unimplemented `accounts`/`assets`
+  table branches. Two new tests cover the injected-iapd wiring itself: a soft `upload_prompt` outcome
+  doesn't fail the order, and a thrown error still escalates to `admin_alerts` + halts (same as any other step).
+
+**Deferred (`[~]`, no Docker/live IAPD access this session — same posture as 001–012):** the live
+`api.adviserinfo.sec.gov` call itself (field names are a best-effort mapping — confirm against a real
+response before enabling for production CRDs); live Storage write to `customer-assets` + live `assets`
+insert; wiring the dashboard "Refresh from SEC IAPD" button (030, calls `fetchIapdDocuments` directly) and
+024's footer `getPublicUrl` consumption (024 lands separately). Logic is fully proven via 34 new unit tests
+against mocked HTTP/Supabase boundaries (client + scrape-fallback + service + pipeline wiring).
+
+**Green:** `npm test` (416, +27 over 012's 389: 9 client + 6 scrape-fallback + 10 service + 2 new pipeline
+wiring tests), `typecheck`, `lint`, `build` (all routes compile, incl. `/api/inngest`).

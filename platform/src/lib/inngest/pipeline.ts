@@ -22,6 +22,7 @@ import {
 } from "@/lib/orders/state-machine";
 import { transitionOrder, escalateOrderFailure } from "@/lib/orders/transitions";
 import { runScrape, processIntake, type ScrapeOutcome } from "@/lib/intake";
+import { fetchIapdDocuments, type IapdFetchOutcome } from "@/lib/iapd";
 
 import { inngest } from "./client";
 import { isRateLimitError } from "./errors";
@@ -124,6 +125,13 @@ interface RunPipelineArgs {
    */
   scrape?: (deps: { client: AdminClient; orderId: string }) => Promise<ScrapeOutcome>;
   intake?: (deps: { client: AdminClient; orderId: string }) => Promise<unknown>;
+  /** The real iapd.fetch step body (014), injectable so tests don't hit a live
+   * SEC IAPD endpoint. Defaults to the real implementation. */
+  iapd?: (deps: {
+    client: AdminClient;
+    orderId: string;
+    accountId: string;
+  }) => Promise<IapdFetchOutcome>;
 }
 
 /**
@@ -135,8 +143,10 @@ export async function runPipeline({
   step,
   client,
   orderId,
+  accountId,
   scrape = runScrape,
   intake = processIntake,
+  iapd = (deps) => fetchIapdDocuments(deps),
 }: RunPipelineArgs): Promise<void> {
   // Step ids are `${stage}:${to}` so every transition is a DISTINCT Inngest step
   // — same-id steps are memoised and would silently skip re-execution, which is
@@ -202,12 +212,15 @@ export async function runPipeline({
   await advance("intake", "onboarding_in_progress");
   await advance("intake", "onboarding_complete");
 
-  // iapd is a data-fetch enrichment; no dedicated state, modeled as a no-op step
+  // iapd.fetch (014, §5.4): pull ADV/CRS by CRD, falling back to the crawl
+  // already captured by the scrape step, then to an advisor upload prompt.
+  // Best-effort enrichment (no dedicated state) — a hard IAPD/scrape failure
+  // does not fail the order; only a rate limit propagates for Inngest backoff.
   await step.run(
     "iapd",
     async () => {
       try {
-        return { ok: true };
+        return await iapd({ client, orderId, accountId });
       } catch (err) {
         return handleStepFailure(client, orderId, "iapd", err);
       }
