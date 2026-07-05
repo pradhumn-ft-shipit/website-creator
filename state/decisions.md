@@ -1079,3 +1079,74 @@ until external counsel review of the ToS/Privacy/DPA/indemnification language is
 that sign-off as a new decisions.md entry when it happens, per PRD §17.5 (required before private beta,
 not before this AFK ticket can be marked done). Ticket 037's own acceptance box for counsel review is
 marked `[~]` deferred, not `[x]`.
+
+---
+
+## 2026-07-05 — 004 Email infrastructure (Resend) + `email_log` (PRD §9.4, §10.1)
+
+Built in an isolated worktree (`ticket/004-email-resend`). One deep module every later feature
+(003 verify-email swap, 024 launch/dns, 028 lead, 032 cancellation/payment) calls through.
+
+- **Module shape (`src/lib/email/`):** `client.ts` (`EmailClient` — thin `ResendBoundary` SDK
+  injected, same posture as Gemini/Firecrawl's `GenAIBoundary`/`HttpBoundary`; `resendClient()`
+  wires the real `resend` package from `RESEND_API_KEY`, throws fast if unset) · `templates.tsx`
+  (ONE file holds the shared react-email `Layout` + every template body + the `TEMPLATES`
+  registry + `TemplateDataMap` — deliberately not one file per template; deep-modules preference
+  + keeps the "callers pass data, not HTML" rule enforceable in one place) · `log.ts`
+  (`email_log` IO — `writeEmailLog`/`updateEmailLogStatus`, service-role client, same shape as
+  `lib/compliance/persistence.ts`) · `send.ts` (`sendEmail`/`sendEmailWithDeps` — the deps-injected
+  orchestration core + the real wired entry point, same split as `lib/admin/orders.ts`
+  `retryOrder`/`retryOrderById`) · `webhook.ts` (Svix-style signature verification via
+  `node:crypto` HMAC-SHA256, no new dependency — Resend signs webhooks the same way Svix does —
+  + `applyEmailStatusEvent` mapping `email.{delivered,bounced,complained}` → `email_log.status`).
+- **Templates registered:** `verify_email`, `launch`, `lead`, `dns_success`, `cancellation_day0`,
+  `cancellation_day14`, `cancellation_day28` (032's day 0/14/28 warning emails — the ticket's
+  `cancellation_*` plural resolved to these three), `payment_failed`. All stub copy (real copy
+  lands with each consuming ticket, per the ticket's own note).
+- **Deps added: `resend ^6.17`, `@react-email/components ^1.0`.** Nothing existing renders email
+  templates or talks to Resend; `resend`'s `emails.send({react: <Element>})` accepts a react-email
+  component directly (it renders to HTML internally), so no separate render call/dependency is
+  needed at our boundary. (npm flagged pre-existing moderate/high transitive advisories, same
+  posture as 008/009 — not force-fixed.)
+- **No schema change.** 002's `email_log` (account_id, template, recipient, resend_message_id,
+  status CHECK sent/delivered/bounced/complained, sent_at, delivered_at) covers every column this
+  ticket needs; no `reply_to`/error-detail column added (not required by any acceptance criterion).
+- **Log-write posture: only a successful send gets a log row.** `email_log.status`'s CHECK
+  constraint has no `failed` value, so a send that throws (`EmailSendError`/`EmailRateLimitError`)
+  has nothing to log a resend_message_id against — `sendEmailWithDeps` never calls `writeEmailLog`
+  on that path (proven in `send.test.ts`). The caller's own throw/catch is the failure signal;
+  nothing here silently swallows a send failure.
+- **Bounce/complaint = log only, by construction, not by a guard.** CLAUDE.md's fallback rule
+  ("log + surface, never blind-retry") is satisfied structurally: `applyEmailStatusEvent` only
+  calls `updateEmailLogStatus` — there is no send-capable dependency anywhere in `webhook.ts`, so
+  there is no code path that COULD auto-retry from a bounce, not just one that happens not to.
+  Surfacing bounces/complaints in an admin UI is 034's job (`/admin/email-log`).
+- **Webhook signature verification implemented without a new dependency.** Resend signs webhooks
+  using the Svix scheme (`svix-id`/`svix-timestamp`/`svix-signature` headers, HMAC-SHA256 over
+  `${id}.${timestamp}.${body}` with the base64-decoded `whsec_...` secret). Implemented directly
+  with `node:crypto` (`createHmac`, `timingSafeEqual`) rather than adding the `svix` package —
+  one function, fully unit-tested including a tampered-body and wrong-secret case
+  (`webhook.test.ts`). **`RESEND_WEBHOOK_SECRET` unset → verification is skipped with a console
+  warning** (dev/no-webhook-registered-yet posture); once set, a missing/invalid signature is a
+  401. Live-verified: with no secret set, `POST /api/webhooks/resend` against a real dev server
+  correctly no-ops an untracked event type and correctly surfaces a real (non-opaque) `AppError`
+  when asked to update a message id that doesn't exist in a placeholder Supabase project — proves
+  the route reaches the real DB call, not just the mocked test boundary.
+- **Dev verify path** `POST /api/dev/send-test-email` (404 outside development, same posture as
+  `/api/dev/gemini-check`): defaults to Resend's sandbox test address
+  (`delivered@resend.dev`) + the `verify_email` template if no body is given; accepts
+  `{to, template, replyTo}` to exercise any registered template. Live-verified this session
+  (no `RESEND_API_KEY` configured): returns the opaque `{data:null,error:{code:"internal_error"}}`
+  envelope — proves the dev-gate + envelope wiring without incurring a real send.
+- **Live-domain flag (§17.5, external prerequisite — same class as 008 Gemini key / 012
+  Firecrawl key / 009 Inngest infra):** No Resend account/API key/domain this session. Built +
+  unit-tested end to end against a mocked `ResendBoundary`; real sends activate the moment
+  `RESEND_API_KEY` is set (sandbox key works pre-domain-verification). Fully verifiable only once:
+  (1) `RESEND_API_KEY` is set → `/api/dev/send-test-email` lands a real sandbox send + `email_log`
+  row; (2) the domain is SPF/DKIM/DMARC-verified → real-recipient sends; (3) the Resend webhook is
+  registered at `/api/webhooks/resend` + `RESEND_WEBHOOK_SECRET` is set → a real delivery event
+  flips `email_log.status`. Ticket's own acceptance boxes flag which criteria are `[~]` pending this.
+
+**Green:** `npm test` (435, +46: 6 client + 7 log + 4 send + 9 webhook-lib + 11 templates + 5 webhook-route
++ 4 dev-route), `npm run typecheck`, `npm run lint`, `npm run build` (both new routes compile dynamic).
+**004 Done.**
