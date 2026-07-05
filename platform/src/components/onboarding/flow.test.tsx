@@ -72,7 +72,7 @@ describe("<OnboardingFlow />", () => {
     ).toBeInTheDocument();
   });
 
-  it("walks RIA → sub-class → payment → build handoff, creating the order", async () => {
+  it("walks RIA → sub-class → payment → intake, creating the order (build no longer fires at checkout)", async () => {
     const calls = mockApi();
     const user = userEvent.setup();
     render(<OnboardingFlow initialStep="industry" initialOrderId={null} />);
@@ -94,18 +94,20 @@ describe("<OnboardingFlow />", () => {
     expect(screen.getByText("$50")).toBeInTheDocument();
     expect(screen.getByText(/no charge while/i)).toBeInTheDocument();
 
-    // start build → checkout creates order, lands on handoff
+    // start subscription → checkout creates the order, then the intake flow
+    // begins (NOT the build handoff — the pipeline starts at "Build my site").
     await user.click(screen.getByRole("button", { name: /start my site/i }));
     expect(
-      await screen.findByRole("heading", { name: /your site is being built/i }),
+      await screen.findByRole("heading", { name: /confirm your registration/i }),
     ).toBeInTheDocument();
 
-    // the three POSTs happened with the right bodies
-    expect(calls).toEqual([
-      { url: "/api/onboarding/selection", body: { industry: "ria" } },
-      { url: "/api/onboarding/selection", body: { subIndustry: "ria_only" } },
-      { url: "/api/onboarding/checkout", body: {} },
-    ]);
+    // checkout was called; no build handoff yet
+    expect(calls).toContainEqual({ url: "/api/onboarding/selection", body: { industry: "ria" } });
+    expect(calls).toContainEqual({ url: "/api/onboarding/selection", body: { subIndustry: "ria_only" } });
+    expect(calls).toContainEqual({ url: "/api/onboarding/checkout", body: {} });
+    expect(
+      screen.queryByRole("heading", { name: /your site is being built/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("resumes directly at the handoff when an order already exists", () => {

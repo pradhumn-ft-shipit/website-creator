@@ -66,3 +66,16 @@ export {
   type UploadedAsset,
   type LogoProcessing,
 } from "./assets";
+
+// 013 — template selection + build hand-off (§4.1.9/14, §6.1).
+export {
+  selectTemplate,
+  finalizeAndBuild,
+  isTemplateId,
+  TEMPLATE_CATALOG,
+  TEMPLATE_IDS,
+  type TemplateId,
+  type TemplateSpec,
+  type BuildDeps,
+  type BuildEventSender,
+} from "./templates";

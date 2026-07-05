@@ -9,6 +9,15 @@ import { RIA_SUB_CLASS, type StepKey } from "@/lib/onboarding/steps";
 import { Button } from "@/components/ui/button";
 import { ProgressRail } from "./progress-rail";
 import { IndustryGrid } from "./industry-grid";
+import { IntakeFlow } from "./intake-steps";
+
+/**
+ * Local step union. The intake stage (013 — confirm-or-correct → Round-2 →
+ * assets → template) is a self-contained sub-flow with its own progress rail, so
+ * it's tracked here as one extra step between payment and handoff rather than in
+ * the shared ONBOARDING_STEPS model.
+ */
+type FlowStep = StepKey | "intake";
 
 export type OnboardingFlowProps = {
   initialStep: StepKey;
@@ -26,14 +35,18 @@ export type OnboardingFlowProps = {
  * template, copy review) are tickets 012/013/015/021 — they extend this shell.
  */
 export function OnboardingFlow({ initialStep, initialOrderId }: OnboardingFlowProps) {
-  const [step, setStep] = useState<StepKey>(initialStep);
+  const [step, setStep] = useState<FlowStep>(initialStep);
   const [orderId, setOrderId] = useState<string | null>(initialOrderId);
+
+  // The intake sub-flow owns its own progress rail; the top rail is for the
+  // three shared steps only (§7.7).
+  const showTopRail = step !== "handoff" && step !== "intake";
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-xl flex-col px-5 py-8">
-      {step !== "handoff" ? (
+      {showTopRail ? (
         <header className="mb-10">
-          <ProgressRail step={step} />
+          <ProgressRail step={step as StepKey} />
         </header>
       ) : null}
 
@@ -51,10 +64,16 @@ export function OnboardingFlow({ initialStep, initialOrderId }: OnboardingFlowPr
           <PaymentStep
             onBack={() => setStep("subclass")}
             onPaid={(id) => {
+              // 013 flow: checkout creates the order but does NOT start the
+              // pipeline — the intake stage runs next, and its final "Build my
+              // site" is what enqueues generation.
               setOrderId(id);
-              setStep("handoff");
+              setStep("intake");
             }}
           />
+        ) : null}
+        {step === "intake" ? (
+          <IntakeFlow onComplete={() => setStep("handoff")} />
         ) : null}
         {step === "handoff" ? <HandoffScreen orderId={orderId} /> : null}
       </main>
@@ -253,7 +272,7 @@ function HandoffScreen({ orderId }: { orderId: string | null }) {
 
 // ---- shared bits ----------------------------------------------------------
 
-function StepHeading({
+export function StepHeading({
   title,
   subtitle,
   center,
@@ -272,7 +291,7 @@ function StepHeading({
   );
 }
 
-function BackButton({ onBack }: { onBack: () => void }) {
+export function BackButton({ onBack }: { onBack: () => void }) {
   return (
     <button
       type="button"
