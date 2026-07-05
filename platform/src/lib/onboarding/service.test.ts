@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AppError } from "@/lib/api/envelope";
 import {
-  createOrderAndEnqueue,
+  createOrder,
   getOnboardingState,
   saveOnboardingSelection,
 } from "./service";
@@ -119,15 +119,15 @@ describe("saveOnboardingSelection", () => {
   });
 });
 
-describe("createOrderAndEnqueue", () => {
-  it("creates a payment_received order and emits order.created once", async () => {
+describe("createOrder", () => {
+  it("creates a payment_received order WITHOUT emitting order.created (build moved to end of intake)", async () => {
     const { client, rec } = makeClient({
       account: { id: "acct-1", industry: "ria", sub_industry: "ria_only" },
       orders: [],
     });
     const send = vi.fn(async () => undefined);
 
-    const result = await createOrderAndEnqueue({
+    const result = await createOrder({
       client: client as never,
       userId: "user-1",
       send,
@@ -137,40 +137,30 @@ describe("createOrderAndEnqueue", () => {
       account_id: "acct-1",
       status: "payment_received",
     });
-    expect(send).toHaveBeenCalledWith({
-      name: "order.created",
-      data: { orderId: "order-new", accountId: "acct-1" },
-    });
+    // 013 flow decision: the pipeline enqueue no longer fires at checkout.
+    expect(send).not.toHaveBeenCalled();
     expect(result).toEqual({ orderId: "order-new", created: true });
   });
 
-  it("is idempotent on double-submit: returns the existing order, no second insert, no re-emit", async () => {
+  it("is idempotent on double-submit: returns the existing order, no second insert", async () => {
     const { client, rec } = makeClient({
       account: { id: "acct-1", industry: "ria", sub_industry: "ria_only" },
       orders: [{ id: "order-existing", status: "scraping" }],
     });
-    const send = vi.fn(async () => undefined);
 
-    const result = await createOrderAndEnqueue({
-      client: client as never,
-      userId: "user-1",
-      send,
-    });
+    const result = await createOrder({ client: client as never, userId: "user-1" });
 
     expect(result).toEqual({ orderId: "order-existing", created: false });
     expect(rec.orderInsert).toBeUndefined();
-    expect(send).not.toHaveBeenCalled();
   });
 
   it("refuses to create an order before industry + sub-class are chosen", async () => {
     const { client } = makeClient({
       account: { id: "acct-1", industry: "ria", sub_industry: null },
     });
-    const send = vi.fn(async () => undefined);
     await expect(
-      createOrderAndEnqueue({ client: client as never, userId: "user-1", send }),
+      createOrder({ client: client as never, userId: "user-1" }),
     ).rejects.toBeInstanceOf(AppError);
-    expect(send).not.toHaveBeenCalled();
   });
 });
 

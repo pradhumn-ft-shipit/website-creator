@@ -134,12 +134,17 @@ export async function saveOnboardingSelection(
 
 /**
  * The simulated-checkout success handler (§15.4 — payment is a placeholder in
- * alpha). Creates the advisor's single order at the pipeline entry state and
- * emits `order.created` so Inngest (009) picks it up. Idempotent on
- * double-submit: if an order already exists we return it without inserting a
- * second or re-emitting (v1 is one website per account).
+ * alpha). Creates the advisor's single order at the pipeline entry state.
+ * Idempotent on double-submit: if an order already exists we return it without
+ * inserting a second (v1 is one website per account).
+ *
+ * NB (013 flow decision): checkout NO LONGER emits `order.created`. The build
+ * enqueue moved to the end of the intake flow ("Build my site", after template
+ * selection) — see `lib/intake/templates.ts#finalizeAndBuild`. Creating the
+ * order here still lets the intake screens attach `intake_data` to it while the
+ * advisor works; the pipeline only starts once they finalize.
  */
-export async function createOrderAndEnqueue(
+export async function createOrder(
   deps: OnboardingDeps,
 ): Promise<{ orderId: string; created: boolean }> {
   const account = await readAccount(deps);
@@ -162,16 +167,7 @@ export async function createOrderAndEnqueue(
     .single();
   if (error) throw error;
 
-  const orderId = (data as { id: string }).id;
-
-  if (deps.send) {
-    await deps.send({
-      name: "order.created",
-      data: { orderId, accountId: account.id },
-    });
-  }
-
-  return { orderId, created: true };
+  return { orderId: (data as { id: string }).id, created: true };
 }
 
 export type OnboardingState = {

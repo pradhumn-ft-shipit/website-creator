@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WRI · Ticket 013 wireframe — intake confirm → template</title>
+<style>
+  :root{
+    --bg:#faf8f4; --ink:#2c2a26; --muted:#6f6a61; --line:#e2ddd3;
+    --card:#fffefb; --emerald:#1f6f52; --emerald-soft:#e6f1ea; --emerald-line:#bcd9cb;
+    --amber:#8a6a1f; --amber-soft:#faf1dc; --sky:#2f5d8a; --sky-soft:#e6eef6;
+    --note:#7a4bd0; --note-soft:#f1ecfb; --note-line:#d9cbf3;
+    --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --serif:Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:var(--emerald)}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 24px 120px}
+  header.top{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:8px}
+  header.top h1{font-family:var(--serif);font-size:30px;margin:0 0 6px;letter-spacing:-.01em}
+  header.top .sub{color:var(--muted);font-size:15px;max-width:760px}
+  .kicker{font:600 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--emerald);margin-bottom:10px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:22px 0 0;font-size:12.5px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:12px;height:12px;border-radius:4px;border:1px solid rgba(0,0,0,.1)}
+  .dot.state{background:var(--sky-soft);border-color:var(--sky)}
+  .dot.note{background:var(--note-soft);border-color:var(--note-line)}
+  .dot.ph{background:repeating-linear-gradient(45deg,#efeae0,#efeae0 4px,#e5dfd3 4px,#e5dfd3 8px)}
+
+  /* screen scaffold */
+  .screen{margin-top:56px;scroll-margin-top:20px}
+  .screen > h2{display:flex;align-items:baseline;gap:12px;font-size:19px;margin:0 0 4px}
+  .screen > h2 .step{font:600 12px/1 var(--mono);color:#fff;background:var(--emerald);padding:5px 8px;border-radius:6px;letter-spacing:.04em}
+  .screen > .prd{font-size:12.5px;color:var(--muted);font-family:var(--mono);margin:0 0 18px}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+  /* device frame */
+  .device{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 1px 3px rgba(60,50,20,.05),0 12px 30px -12px rgba(60,50,20,.12);overflow:hidden}
+  .rail{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);background:#fdfcf9}
+  .rail .bar{flex:1;height:6px;border-radius:3px;background:var(--line);position:relative;overflow:hidden}
+  .rail .bar > i{position:absolute;inset:0 auto 0 0;background:var(--emerald);border-radius:3px}
+  .rail .lbl{font:600 11px/1 var(--mono);color:var(--muted);white-space:nowrap}
+  .procbanner{display:flex;align-items:center;gap:10px;padding:9px 20px;background:var(--amber-soft);color:var(--amber);font-size:12.5px;border-bottom:1px solid #eaddc0}
+  .procbanner .spin{width:12px;height:12px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;display:inline-block}
+  .procbanner.done{background:var(--emerald-soft);color:var(--emerald);border-bottom-color:var(--emerald-line)}
+  .body{padding:26px 24px 28px}
+  .q-kicker{font:600 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .q-title{font-family:var(--serif);font-size:23px;line-height:1.25;letter-spacing:-.01em;margin:0 0 6px}
+  .q-help{color:var(--muted);font-size:14px;margin:0 0 20px}
+
+  /* confirm-or-correct rows */
+  .cc{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:18px}
+  .cc-row{display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .cc-row:last-child{border-bottom:0}
+  .cc-row .fld{font:600 11px/1 var(--mono);color:var(--muted);width:120px;flex:none;text-transform:uppercase;letter-spacing:.03em}
+  .cc-row .val{flex:1;font-size:15px}
+  .cc-row .val small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;font-family:var(--mono)}
+  .chip{display:inline-flex;align-items:center;gap:6px;font:600 11px/1 var(--mono);padding:5px 9px;border-radius:20px}
+  .chip.ok{background:var(--emerald-soft);color:var(--emerald)}
+  .chip.low{background:var(--amber-soft);color:var(--amber)}
+  .chip.gap{background:#f6ece9;color:#a1442e}
+  .cc-actions{display:flex;gap:8px;flex:none}
+  .btn{font:600 13px/1 var(--sans);padding:9px 14px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:default}
+  .btn.tiny{padding:6px 10px;font-size:12px}
+  .btn.pri{background:var(--emerald);border-color:var(--emerald);color:#fff}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+  .btn.wide{width:100%;text-align:center;padding:13px}
+  .row-edit{background:#fdfcf9}
+  .input{border:1px solid var(--input,#d9d3c7);background:#fff;border-radius:8px;padding:9px 11px;font-size:14px;width:100%}
+  .footer-nav{display:flex;align-items:center;justify-content:space-between;margin-top:22px}
+  .link{font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+
+  /* generic option cards / radios */
+  .opts{display:grid;gap:10px}
+  .opt{display:flex;align-items:flex-start;gap:12px;border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+  .opt.sel{border-color:var(--emerald);background:var(--emerald-soft)}
+  .opt .rd{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none;margin-top:1px}
+  .opt.sel .rd{border-color:var(--emerald);background:radial-gradient(circle at center,var(--emerald) 0 6px,#fff 6px 8px,var(--emerald-soft) 8px)}
+  .opt .ttl{font-weight:600;font-size:14.5px}
+  .opt .desc{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg span{padding:9px 16px;font-size:13px;font-weight:600;border-right:1px solid var(--line)}
+  .seg span:last-child{border-right:0}
+  .seg span.on{background:var(--emerald);color:#fff}
+  .pills{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{border:1px solid var(--line);border-radius:20px;padding:7px 13px;font-size:12.5px;color:var(--muted)}
+  .pill.on{background:var(--emerald-soft);border-color:var(--emerald-line);color:var(--emerald);font-weight:600}
+  label.fl{display:block;font:600 12px/1 var(--mono);text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin:0 0 7px}
+  .field{margin-bottom:18px}
+
+  /* upload dropzones */
+  .drops{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:560px){.drops{grid-template-columns:1fr}}
+  .drop{border:1.5px dashed #cfc8ba;border-radius:11px;padding:18px;text-align:center;color:var(--muted);font-size:13px;background:#fdfcf9}
+  .drop .ic{font-size:22px;display:block;margin-bottom:6px;opacity:.6}
+  .thumbrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .thumb{width:46px;height:46px;border-radius:8px;background:var(--dot-ph,repeating-linear-gradient(45deg,#efeae0,#efeae0 4px,#e5dfd3 4px,#e5dfd3 8px));border:1px solid var(--line)}
+  .logo-proc{display:flex;gap:12px;align-items:center;border:1px solid var(--emerald-line);background:var(--emerald-soft);border-radius:11px;padding:12px 14px;margin-top:12px;font-size:12.5px;color:var(--emerald)}
+  .swatch{width:26px;height:26px;border-radius:7px;border:1px solid rgba(0,0,0,.1)}
+  .wordmark{border:1px solid var(--line);border-radius:11px;padding:20px;text-align:center;margin-top:12px;background:#fff}
+  .wordmark .wm{font-family:var(--serif);font-size:26px;letter-spacing:-.02em}
+  .wordmark .wm small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--muted);margin-top:4px;text-transform:uppercase}
+
+  /* template selection */
+  .tpls{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:760px){.tpls{grid-template-columns:1fr}}
+  .tpl{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .tpl.sel{border-color:var(--emerald);box-shadow:0 0 0 2px var(--emerald-soft)}
+  .tpl .prev{height:150px;border-bottom:1px solid var(--line);padding:12px;position:relative;overflow:hidden}
+  .tpl .prev .minihero{height:34px;border-radius:5px;margin-bottom:7px}
+  .tpl .prev .ln{height:6px;border-radius:3px;background:#e7e1d6;margin:5px 0}
+  .tpl .prev .ln.s{width:55%}.tpl .prev .ln.m{width:80%}
+  .tpl .meta{padding:12px 13px}
+  .tpl .meta h4{margin:0 0 3px;font-size:14.5px;display:flex;justify-content:space-between;align-items:center}
+  .tpl .meta .persona{font-size:11.5px;color:var(--muted)}
+  .tpl .meta .aes{font-size:11.5px;color:var(--muted);margin-top:7px;border-top:1px dashed var(--line);padding-top:7px}
+  .tpl .badge{font:600 10px/1 var(--mono);color:var(--emerald);background:var(--emerald-soft);padding:4px 7px;border-radius:12px}
+  /* trust preview: serif/navy */
+  .tpl.trust .minihero{background:linear-gradient(120deg,#2b3a4d,#1c2733)}
+  .tpl.trust .prev{font-family:var(--serif)}
+  /* modern preview: airy/emerald accent from brand */
+  .tpl.modern .minihero{background:linear-gradient(120deg,var(--brand,#1f6f52),#3f9c78)}
+  /* boutique: editorial mixed */
+  .tpl.boutique .minihero{background:repeating-linear-gradient(90deg,#7a4bd0 0 33%,#e7e1d6 33% 100%)}
+  .brandbar{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);margin-bottom:14px;border:1px solid var(--emerald-line);background:var(--emerald-soft);border-radius:10px;padding:9px 12px}
+
+  /* annotation column */
+  .notes{position:sticky;top:20px}
+  .note{border:1px solid var(--note-line);background:var(--note-soft);border-radius:12px;padding:14px 15px;font-size:13px;margin-bottom:14px}
+  .note h5{margin:0 0 6px;font:700 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--note)}
+  .note p{margin:0 0 8px}.note p:last-child{margin:0}
+  .note b{color:var(--ink)}
+  .states{border:1px solid var(--sky);background:var(--sky-soft);border-radius:12px;padding:14px 15px;font-size:12.5px;margin-bottom:14px}
+  .states h5{margin:0 0 8px;font:700 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--sky)}
+  .states ul{margin:0;padding-left:16px}.states li{margin-bottom:5px}
+  .toc{position:sticky;top:0;background:var(--bg);padding:14px 0;margin-top:8px;z-index:5;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;font-size:12.5px}
+  .toc a{text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:5px 11px;color:var(--muted);background:#fff}
+  .toc a:hover{border-color:var(--emerald);color:var(--emerald)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="kicker">WRI · Ticket 013 · Low-fidelity wireframe · HIL checkpoint</div>
+    <h1>Intake: confirm-or-correct → Round-2 → assets → template</h1>
+    <p class="sub">The advisor-facing intake flow that runs after payment (§4.1 steps 8–12 + step 9 template pick),
+      built on the extracted <code>structured_intake_json</code> from ticket 012. This is layout, copy, field flow, and
+      states — not production styling. <b>Purpose of this checkpoint: approve the flow before it is built AFK.</b></p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--emerald)"></i> real UI element</span>
+      <span><i class="dot ph"></i> placeholder / image slot</span>
+      <span><i class="dot state"></i> state annotation (blue)</span>
+      <span><i class="dot note"></i> UX-decision annotation (purple)</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#flow">Flow order</a>
+    <a href="#s1">1 · Quick questions</a>
+    <a href="#s2">2 · Round-1 confirm</a>
+    <a href="#s3">3 · Assets + logo</a>
+    <a href="#s4">4 · Round-2</a>
+    <a href="#s5">5 · Template</a>
+    <a href="#s6">Handoff → 020</a>
+  </nav>
+
+  <!-- FLOW ORDER -->
+  <section class="screen" id="flow">
+    <h2>Flow order &amp; how it sits in onboarding</h2>
+    <p class="prd">§7.7 one-question-at-a-time · auto-save every step · non-blocking background-processing banner</p>
+    <div class="note" style="max-width:820px">
+      <h5>Ordering decision — read first</h5>
+      <p>PRD §4.1 numbers template pick as step 9 (before Round-1). We <b>reorder template to the end</b> of this flow, on
+        purpose: the template preview is only compelling once we have the <b>confirmed brand color</b> and the
+        <b>uploaded/generated logo</b> — both of which are settled in steps 2–3 here. Showing an empty grey preview first
+        undersells "templates are the product" (§7.4). The five screens run:</p>
+      <p><b>1. Quick questions</b> (asked while the 012 scrape runs — §4.1.8) →
+         <b>2. Round-1 confirm-or-correct</b> (§4.1.10, §8.3) →
+         <b>3. Asset upload + logo</b> (§4.1.11, §6.8) →
+         <b>4. Round-2 questions</b> (§4.1.12, §8.3) →
+         <b>5. Template selection</b> (§4.1.9, §6.1).</p>
+      <p>Every screen auto-saves to <code>intake_data</code> / <code>assets</code> / <code>sites</code> before advancing, so
+        refresh and "save &amp; continue later" resume exactly here — same resume model 010 already established.</p>
+    </div>
+  </section>
+
+  <!-- SCREEN 1 : QUICK QUESTIONS -->
+  <section class="screen" id="s1">
+    <h2><span class="step">STEP 1</span> Quick questions — asked while the scrape runs</h2>
+    <p class="prd">PRD §4.1.8 · §5.5 (AUM → SEC/state) — captured in parallel with background scrape</p>
+    <div class="layout">
+      <div class="device">
+        <div class="rail"><span class="lbl">Setup</span><div class="bar"><i style="width:20%"></i></div><span class="lbl">1 / 5</span></div>
+        <div class="procbanner"><span class="spin"></span> Reading your website in the background — you can keep going</div>
+        <div class="body">
+          <div class="q-kicker">A few things we can't find on a website</div>
+          <h3 class="q-title">Let's confirm your registration</h3>
+          <p class="q-help">Takes about a minute. You can change any of this later.</p>
+
+          <div class="field">
+            <label class="fl">Assets under management (AUM)</label>
+            <div class="seg"><span>Under $100M</span><span class="on">$100M or more</span></div>
+            <p class="q-help" style="margin:8px 0 0">This sets whether you're SEC- or state-registered — we handle the disclosures accordingly.</p>
+          </div>
+
+          <div class="field" style="border-top:1px dashed var(--line);padding-top:16px">
+            <label class="fl">Primary state of registration <span style="color:var(--amber)">· shown only if under $100M</span></label>
+            <input class="input" value="California (CA)" />
+          </div>
+
+          <div class="field">
+            <label class="fl">CRD number <span style="font-weight:400;text-transform:none;color:var(--muted)">— optional, unlocks IAPD auto-pull (014)</span></label>
+            <input class="input" placeholder="e.g. 123456" />
+          </div>
+
+          <div class="field">
+            <label class="fl">Custodian</label>
+            <div class="pills"><span class="pill on">Schwab</span><span class="pill">Fidelity</span><span class="pill">Altruist</span><span class="pill">Pershing</span><span class="pill">Other</span></div>
+          </div>
+
+          <div class="field">
+            <label class="fl">Designations of principals</label>
+            <div class="pills"><span class="pill on">CFP®</span><span class="pill on">CFA</span><span class="pill">ChFC</span><span class="pill">CPA/PFS</span><span class="pill">Other…</span></div>
+          </div>
+
+          <div class="footer-nav"><a class="link">Save &amp; continue later</a><button class="btn pri">Next</button></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h5>Never-guessed vs. inferred</h5>
+          <p>AUM, CRD, custodian, designations are <b>asked directly</b> — they're either legally load-bearing or absent from
+            most sites. They are <b>never inferred/guessed</b> even if the scrape hints at them.</p>
+        </div>
+        <div class="note">
+          <h5>AUM drives SEC vs. state (§5.5)</h5>
+          <p><b>≥ $100M → </b><code>sub_industry = ria_sec</code>, default SEC disclosure set.</p>
+          <p><b>&lt; $100M → </b><code>ria_state</code>, and the <b>state-overlay prompt appears</b> (top-10 states in v1). The
+            state field only renders on the "under" branch — no dead field on the SEC path.</p>
+        </div>
+        <div class="states">
+          <h5>States on this screen</h5>
+          <ul>
+            <li>Default: SEC branch (state field hidden)</li>
+            <li>Under-$100M: state select revealed inline</li>
+            <li>CRD entered → note "we'll auto-fill from IAPD"</li>
+            <li>Non-blocking banner flips to "done" when scrape finishes (see step 2)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 2 : ROUND-1 CONFIRM -->
+  <section class="screen" id="s2">
+    <h2><span class="step">STEP 2</span> Round-1 confirm-or-correct</h2>
+    <p class="prd">PRD §4.1.10 · §8.3 · §7.3 — "We think X — ✓ Yes / Edit", never blank fields</p>
+    <div class="layout">
+      <div class="device">
+        <div class="rail"><span class="lbl">About your firm</span><div class="bar"><i style="width:40%"></i></div><span class="lbl">2 / 5</span></div>
+        <div class="procbanner done">✓ We read your site — here's what we found. Fix anything that's off.</div>
+        <div class="body">
+          <div class="q-kicker">Confirm or correct</div>
+          <h3 class="q-title">Here's what we picked up</h3>
+          <p class="q-help">Everything's editable. Green = we're confident, amber = please double-check, red = we couldn't find it.</p>
+
+          <div class="cc">
+            <div class="cc-row">
+              <span class="fld">Firm name</span>
+              <span class="val">Meridian Wealth Partners</span>
+              <span class="chip ok">✓ 0.98</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">Location</span>
+              <span class="val">San Francisco, CA 94105</span>
+              <span class="chip ok">✓ 0.95</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">Year founded</span>
+              <span class="val">2011</span>
+              <span class="chip ok">✓ 0.9</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+            <!-- editing state -->
+            <div class="cc-row row-edit">
+              <span class="fld">Team size</span>
+              <span class="val"><input class="input" value="7" style="max-width:120px" /><small>editing — persists to intake_data on blur</small></span>
+              <span class="cc-actions"><button class="btn tiny pri">Save</button><button class="btn tiny ghost">Cancel</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">Primary services</span>
+              <span class="val">Financial planning, Investment management, Retirement<small>source: /services</small></span>
+              <span class="chip ok">✓ 0.92</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">Ideal client</span>
+              <span class="val">Pre-retirees &amp; business owners, $1M+ investable</span>
+              <span class="chip low">⚠ 0.55</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">AUM range</span>
+              <span class="val">$100M+ <small>confirmed on step 1 → SEC-registered</small></span>
+              <span class="chip ok">✓ set</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">Fee structure</span>
+              <span class="val">AUM % (tiered)</span>
+              <span class="chip low">⚠ 0.6</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">Designations</span>
+              <span class="val">CFP®, CFA</span>
+              <span class="chip ok">✓ step 1</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">CRD number</span>
+              <span class="val" style="color:var(--muted)">Not found — add it to unlock IAPD auto-fill</span>
+              <span class="chip gap">— missing</span>
+              <span class="cc-actions"><button class="btn tiny">Add</button></span>
+            </div>
+            <div class="cc-row">
+              <span class="fld">Brand colors</span>
+              <span class="val"><span style="display:inline-flex;gap:6px;vertical-align:middle"><i class="swatch" style="background:#1f6f52"></i><i class="swatch" style="background:#2b3a4d"></i></span> <small>drives template preview on step 5</small></span>
+              <span class="chip ok">✓ 0.8</span>
+              <span class="cc-actions"><button class="btn tiny">Edit</button></span>
+            </div>
+          </div>
+
+          <div class="footer-nav"><a class="link">← Back</a><button class="btn pri">Looks right — continue</button></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h5>Why confirm-or-correct beats blank fields</h5>
+          <p>§8.3 calls this a "<b>massive completion-rate difference.</b>" Blank forms make the advisor do extraction work
+            we already did; a pre-filled "✓ Yes / Edit" turns a 12-field form into <b>mostly one tap</b>. Conservative
+            buyers (§7.1) abandon long forms — this is the single biggest completion lever in the flow, so we don't regress it.</p>
+        </div>
+        <div class="note">
+          <h5>Confidence surfaced, not hidden</h5>
+          <p>Each field shows the <code>confidence</code> + <code>sources</code> already stored on <code>IntakeField</code>
+            (012). Low-confidence (amber) and missing (red) rows draw the eye to exactly what needs a human, so the advisor
+            corrects the 2–3 that matter instead of re-reading all 12.</p>
+        </div>
+        <div class="states">
+          <h5>Row states</h5>
+          <ul>
+            <li>Confirmed (green ≥ .85) — collapsed, one Edit button</li>
+            <li>Low-confidence (amber .4–.85) — nudged to check</li>
+            <li>Missing (red, conf 0) — "Add", not "Edit"</li>
+            <li>Editing — inline input, Save/Cancel, writes on save</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 3 : ASSETS -->
+  <section class="screen" id="s3">
+    <h2><span class="step">STEP 3</span> Asset upload — logo, photos, docs</h2>
+    <p class="prd">PRD §4.1.11 · §6.8 (logo processing + wordmark fallback)</p>
+    <div class="layout">
+      <div class="device">
+        <div class="rail"><span class="lbl">Your assets</span><div class="bar"><i style="width:60%"></i></div><span class="lbl">3 / 5</span></div>
+        <div class="body">
+          <div class="q-kicker">Bring what you have</div>
+          <h3 class="q-title">Add your logo &amp; photos</h3>
+          <p class="q-help">All optional. Anything you skip, we handle — a clean wordmark for a missing logo, stock imagery for missing photos.</p>
+
+          <label class="fl">Logo <span style="font-weight:400;text-transform:none;color:var(--muted)">— PNG, SVG, or JPG</span></label>
+          <div class="drop"><span class="ic">⬆</span> Drop your logo or <u>browse</u></div>
+          <div class="logo-proc">
+            <span class="spin" style="border-color:var(--emerald);border-top-color:transparent"></span>
+            <div>Processing: detecting background · extracting dominant color · building variants (favicon 32×32, header 200×60, social 1200×630)</div>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center;margin-top:12px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)"><i class="swatch" style="background:#1f6f52"></i> Dominant color → accent suggestion</div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)">Logo background:
+              <span class="seg" style="margin-left:2px"><span class="on">Light</span><span>Dark</span></span></div>
+          </div>
+
+          <div class="wordmark">
+            <div class="wm">Meridian Wealth Partners<small>generated wordmark · template heading font</small></div>
+            <div style="margin-top:12px;display:flex;gap:8px;justify-content:center"><button class="btn tiny pri">Use this wordmark</button><button class="btn tiny">Upload a logo instead</button></div>
+          </div>
+          <p class="q-help" style="margin:8px 0 0;font-size:12.5px"><b>No-logo path:</b> if nothing is uploaded, this wordmark preview is offered — advisor approves or skips (§6.8). No AI-generated logo, ever.</p>
+
+          <label class="fl" style="margin-top:22px">Photos &amp; documents</label>
+          <div class="drops">
+            <div class="drop"><span class="ic">👤</span> Team photos<div class="thumbrow"><i class="thumb"></i><i class="thumb"></i></div><div style="font-size:11px;margin-top:6px">→ creates <code>team_members</code> rows</div></div>
+            <div class="drop"><span class="ic">🏢</span> Office photos <span style="font-size:11px">(optional)</span></div>
+            <div class="drop"><span class="ic">📄</span> ADV / Form CRS / other docs</div>
+            <div class="drop"><span class="ic">🖼</span> Anything else</div>
+          </div>
+
+          <div class="footer-nav"><a class="link">← Back</a><div style="display:flex;gap:8px"><button class="btn">Skip — I'll add later</button><button class="btn pri">Continue</button></div></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h5>Logo → wordmark fallback path (§6.8)</h5>
+          <p>Upload → auto-process (no background removal in v1 — too risky on stylized logos) → detect light/dark bg → extract
+            dominant color for the accent → generate the three sized variants.</p>
+          <p><b>If no logo:</b> render a wordmark in the template heading font, show preview, advisor approves or skips. Never
+            a blocked step, never an AI-generated mark.</p>
+        </div>
+        <div class="note">
+          <h5>What each upload writes</h5>
+          <p>Every file → Supabase Storage + one <code>assets</code> row (typed: <code>logo / team_photo / office / doc_*</code>).
+            Team photos additionally create <code>team_members</code> rows (name/title/designations editable later in 030).</p>
+        </div>
+        <div class="states">
+          <h5>States</h5>
+          <ul>
+            <li>Empty dropzone</li>
+            <li>Uploading / logo-processing (spinner + steps)</li>
+            <li>Processed: variants + swatch + light/dark toggle</li>
+            <li>No-logo: wordmark preview + approve/skip</li>
+            <li>Whole screen skippable (defaults apply)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 4 : ROUND-2 -->
+  <section class="screen" id="s4">
+    <h2><span class="step">STEP 4</span> Round-2 questions — asked, never inferable</h2>
+    <p class="prd">PRD §4.1.12 · §8.3 Round-2</p>
+    <div class="layout">
+      <div class="device">
+        <div class="rail"><span class="lbl">Your story</span><div class="bar"><i style="width:80%"></i></div><span class="lbl">4 / 5</span></div>
+        <div class="body">
+          <div class="q-kicker">Only you can answer these</div>
+          <h3 class="q-title">What makes you, you</h3>
+          <p class="q-help">Short answers are fine. These shape your copy — we never guess them.</p>
+
+          <div class="field"><label class="fl">What makes you different? <span style="font-weight:400;text-transform:none;color:var(--muted)">one sentence</span></label><input class="input" placeholder="We're the only fee-only firm in Marin focused on tech founders." /></div>
+          <div class="field"><label class="fl">Who do you serve best?</label><input class="input" placeholder="Pre-IPO employees navigating concentrated stock." /></div>
+          <div class="field"><label class="fl">One client story to highlight <span style="font-weight:400;text-transform:none;color:var(--muted)">— we'll anonymize it</span></label><textarea class="input" rows="2" placeholder="A couple came to us worried they'd never retire…"></textarea></div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field"><label class="fl">Photos preference</label><div class="opts">
+              <div class="opt sel"><span class="rd"></span><div><div class="ttl">My own photos</div></div></div>
+              <div class="opt"><span class="rd"></span><div><div class="ttl">Curated stock</div></div></div>
+            </div></div>
+            <div class="field">
+              <label class="fl">Blog?</label><div class="seg" style="margin-bottom:14px"><span class="on">Yes</span><span>No</span></div>
+              <label class="fl">Display your fees?</label><div class="seg"><span>Yes</span><span class="on">No</span></div>
+            </div>
+          </div>
+
+          <div class="field" style="border-top:1px dashed var(--line);padding-top:16px"><label class="fl">Custodian portal URL <span style="font-weight:400;text-transform:none;color:var(--muted)">— if you want a "Client Login" button</span></label><input class="input" placeholder="https://client.schwab.com/login" /></div>
+          <div class="field"><label class="fl">Office address <span style="font-weight:400;text-transform:none;color:var(--muted)">— only if different from your registration address</span></label><input class="input" placeholder="Same as registration" /></div>
+
+          <div class="footer-nav"><a class="link">← Back</a><div style="display:flex;gap:8px"><button class="btn">Skip optional</button><button class="btn pri">Continue</button></div></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h5>The full Round-2 set (§8.3)</h5>
+          <p>Differentiator · who-you-serve-best · one client story (anonymized) · photos pref · blog y/n · fees displayed
+            y/n · <b>logo background light/dark</b> (asked on step 3 next to the logo, where it makes sense) · custodian
+            portal URL · office address. All present — none inferred.</p>
+        </div>
+        <div class="note">
+          <h5>Two rounds, hard cap</h5>
+          <p>§8.3: "capture everything in <b>two rounds maximum</b>." Round-1 (confirm) + Round-2 (this) is the whole ask. No
+            Round-3 — if we'd need one, something failed upstream in 012.</p>
+        </div>
+        <div class="states">
+          <h5>States</h5>
+          <ul>
+            <li>All fields skippable (skip-with-default, §7.7)</li>
+            <li>Fees = No → footer omits fee schedule downstream</li>
+            <li>Blog = No → blog section/route not generated</li>
+            <li>Portal URL empty → no "Client Login" CTA</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 5 : TEMPLATE -->
+  <section class="screen" id="s5">
+    <h2><span class="step">STEP 5</span> Template selection — Trust / Modern / Boutique</h2>
+    <p class="prd">PRD §4.1.9 · §6.1 — side-by-side, brand-color preview, one site per account</p>
+    <div class="layout">
+      <div class="device">
+        <div class="rail"><span class="lbl">Choose your look</span><div class="bar"><i style="width:100%"></i></div><span class="lbl">5 / 5</span></div>
+        <div class="body">
+          <div class="q-kicker">The last choice</div>
+          <h3 class="q-title">Pick your template</h3>
+          <p class="q-help">Each is previewed in your brand color. You can't switch after your site is built, so take a look.</p>
+
+          <div class="brandbar"><i class="swatch" style="background:#1f6f52"></i> Previewing with your brand color <code>#1F6F52</code> (from your site). No colors found → we use a sensible default.</div>
+
+          <div class="tpls" style="--brand:#1f6f52">
+            <div class="tpl trust sel">
+              <div class="prev"><div class="minihero"></div><div class="ln m"></div><div class="ln s"></div><div class="ln m"></div></div>
+              <div class="meta"><h4>Trust <span class="badge">Selected</span></h4><div class="persona">Older, conservative advisors; legacy practices</div><div class="aes">Serif headings · navy/charcoal · advisor-photo hero · credentials-heavy · long-form About</div></div>
+            </div>
+            <div class="tpl modern">
+              <div class="prev"><div class="minihero"></div><div class="ln s"></div><div class="ln m"></div></div>
+              <div class="meta"><h4>Modern</h4><div class="persona">Gen X / NextGen-focused advisors</div><div class="aes">Sans-serif · generous whitespace · big imagery · short copy · muted/gradient accent</div></div>
+            </div>
+            <div class="tpl boutique">
+              <div class="prev"><div class="minihero"></div><div class="ln m"></div><div class="ln s"></div><div class="ln m"></div></div>
+              <div class="meta"><h4>Boutique</h4><div class="persona">Content-producing advisors, RIAs targeting professionals</div><div class="aes">Magazine-style · mixed serif/sans · photography-forward · blog-prominent</div></div>
+            </div>
+          </div>
+
+          <div class="footer-nav" style="margin-top:24px"><a class="link">← Back</a><button class="btn pri">Use Trust — review my copy →</button></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h5>Preview approach</h5>
+          <p>Each card is a real (mini) render of the template's hero/type system, <b>tinted with the extracted brand color</b>
+            (012) so the advisor sees <i>their</i> site, not a generic mock. No color found → documented default (emerald).
+            "Templates are the product" (§7.4) — these previews must look polished, not grey boxes (full-fidelity in build).</p>
+        </div>
+        <div class="note">
+          <h5>Persistence &amp; the one-site rule</h5>
+          <p>Selection writes <code>sites.template_id</code> (<code>trust|modern|boutique</code>). Exactly <b>one site per
+            account</b> in v1 — we upsert, never insert a second. <b>Locked after build</b> (§3.2); the 029 edit-chat
+            guardrails enforce no-switching later.</p>
+        </div>
+        <div class="states">
+          <h5>States</h5>
+          <ul>
+            <li>Three cards, one selected (radio-exclusive)</li>
+            <li>Brand-color preview vs. default-color preview</li>
+            <li>Continue disabled until one is chosen</li>
+            <li>Post-build: read-only (out of scope here)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HANDOFF -->
+  <section class="screen" id="s6">
+    <h2>Exit → copy review (ticket 020)</h2>
+    <p class="prd">This flow ends by handing off to §4.1.13 copy preview, owned by 020 — out of scope for 013.</p>
+    <div class="note" style="max-width:820px">
+      <h5>Boundary</h5>
+      <p>013 ends when template is chosen and all intake is persisted. The "review my copy" button leads into <b>020</b>
+        (generate → preview → revise ≤3 → approve). 013 <b>blocks 024</b> (build needs template + intake) and <b>030</b>
+        (assets/team tabs reuse the asset + team_member rows created here).</p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
