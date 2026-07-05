@@ -23,6 +23,8 @@ import {
 import { transitionOrder, escalateOrderFailure } from "@/lib/orders/transitions";
 import { runScrape, processIntake, type ScrapeOutcome } from "@/lib/intake";
 import { fetchIapdDocuments, type IapdFetchOutcome } from "@/lib/iapd";
+import { runImagesStep } from "@/lib/images";
+import { generateLegalPages } from "@/lib/legal-pages";
 
 import { inngest } from "./client";
 import { isRateLimitError } from "./errors";
@@ -132,6 +134,21 @@ interface RunPipelineArgs {
     orderId: string;
     accountId: string;
   }) => Promise<IapdFetchOutcome>;
+  /**
+   * Real 022 step bodies (images + legal/hygiene pages), injectable so tests
+   * drive the pipeline without live stock/Gemini/Supabase. Default to the real
+   * implementations; the Inngest wrapper relies on the defaults.
+   */
+  images?: (deps: {
+    client: AdminClient;
+    orderId: string;
+    accountId: string;
+  }) => Promise<unknown>;
+  legal?: (deps: {
+    client: AdminClient;
+    orderId: string;
+    accountId: string;
+  }) => Promise<unknown>;
 }
 
 /**
@@ -147,6 +164,8 @@ export async function runPipeline({
   scrape = runScrape,
   intake = processIntake,
   iapd = (deps) => fetchIapdDocuments(deps),
+  images = runImagesStep,
+  legal = generateLegalPages,
 }: RunPipelineArgs): Promise<void> {
   // Step ids are `${stage}:${to}` so every transition is a DISTINCT Inngest step
   // — same-id steps are memoised and would silently skip re-execution, which is
@@ -249,12 +268,29 @@ export async function runPipeline({
     await advance("validation", "building");
   }
 
-  // images: best-effort enrichment, non-blocking (no dedicated state)
+  // images.generate (022): resolve every image slot — advisor upload → stock →
+  // capped AI (abstract/office/nature only, no people, guarded at the call
+  // boundary). Stores assets + emits the manifest the build (024) consumes.
   await step.run(
-    "images",
+    "images.generate",
     async () => {
       try {
-        return { ok: true };
+        return await images({ client, orderId, accountId });
+      } catch (err) {
+        return handleStepFailure(client, orderId, "images", err);
+      }
+    },
+    { retries: STEP_RETRY_POLICY.images },
+  );
+
+  // legal.generate (022): Privacy Policy + ToS/Disclaimer + 404, per industry +
+  // state, Layer-2-validated, persisted as generated_content for the build (024).
+  // Shares the images retry budget; failures escalate under the "images" stage.
+  await step.run(
+    "legal.generate",
+    async () => {
+      try {
+        return await legal({ client, orderId, accountId });
       } catch (err) {
         return handleStepFailure(client, orderId, "images", err);
       }

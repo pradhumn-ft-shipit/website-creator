@@ -55,6 +55,8 @@ function makeClient(startStatus = "payment_received") {
 const proceedScrape = async () => ({ route: "proceed" as const, result: {} as never });
 const noopIntake = async () => ({});
 const skippedIapd = async () => ({ route: "skipped" as const, reason: "no_crd" as const });
+const noopImages = async () => ({ images: [] });
+const noopLegal = async () => ({ pages: [] });
 
 /** Mocked Inngest step: runs the fn inline, ignoring opts. */
 function makeStep() {
@@ -117,6 +119,8 @@ describe("runPipeline (happy path through stubs)", () => {
       scrape: proceedScrape,
       intake: noopIntake,
       iapd: skippedIapd,
+      images: noopImages,
+      legal: noopLegal,
     });
 
     expect(getStatus()).toBe("dns_monitoring");
@@ -142,6 +146,8 @@ describe("runPipeline (happy path through stubs)", () => {
       scrape,
       intake,
       iapd: skippedIapd,
+      images: noopImages,
+      legal: noopLegal,
     });
 
     // Failure branch taken, then converges and still reaches the end.
@@ -170,6 +176,8 @@ describe("runPipeline (happy path through stubs)", () => {
       scrape: proceedScrape,
       intake,
       iapd: skippedIapd,
+      images: noopImages,
+      legal: noopLegal,
     });
     expect(intake).toHaveBeenCalledTimes(1);
   });
@@ -192,6 +200,8 @@ describe("runPipeline (happy path through stubs)", () => {
       scrape: proceedScrape,
       intake: noopIntake,
       iapd,
+      images: noopImages,
+      legal: noopLegal,
     });
 
     expect(iapd).toHaveBeenCalledTimes(1);
@@ -220,9 +230,41 @@ describe("runPipeline (happy path through stubs)", () => {
         scrape: proceedScrape,
         intake: noopIntake,
         iapd,
+        images: noopImages,
+        legal: noopLegal,
       }),
     ).rejects.toThrow("iapd exploded");
     expect(alerts).toHaveLength(1);
+  });
+
+  it("runs the images.generate + legal.generate steps with the order + account (022)", async () => {
+    const { client } = makeClient();
+    const step = makeStep();
+    const images = vi.fn(noopImages);
+    const legal = vi.fn(noopLegal);
+
+    await runPipeline({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      step: step as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client: client as any,
+      orderId: "order-1",
+      accountId: "acct-1",
+      scrape: proceedScrape,
+      intake: noopIntake,
+      iapd: skippedIapd,
+      images,
+      legal,
+    });
+
+    expect(images).toHaveBeenCalledTimes(1);
+    expect(legal).toHaveBeenCalledTimes(1);
+    expect(images).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: "order-1", accountId: "acct-1" }),
+    );
+    expect(legal).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: "order-1", accountId: "acct-1" }),
+    );
   });
 });
 

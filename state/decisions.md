@@ -1265,3 +1265,65 @@ against mocked HTTP/Supabase boundaries (client + scrape-fallback + service + pi
 
 **Green:** `npm test` (416, +27 over 012's 389: 9 client + 6 scrape-fallback + 10 service + 2 new pipeline
 wiring tests), `typecheck`, `lint`, `build` (all routes compile, incl. `/api/inngest`).
+
+---
+
+## 2026-07-05 — 022 Generated-site images (stock + capped AI) + legal/hygiene pages (§6.7, §6.9, §14.1)
+
+Consolidated 022+023. Two deep modules under `platform/src/lib/` + a `generateImage` seam on the
+008 client + pipeline wiring + one migration. Built TDD-first; **467 tests (+78)**, typecheck/lint/build green.
+
+- **The no-people guard is enforced in CODE at the call boundary, not just the prompt (§6.7 hard stop).**
+  `lib/images/guard.ts` is a pure, word-boundary, case-insensitive lexicon check (`isProhibitedImageSubject`
+  / `assertImagePromptAllowed` → `ProhibitedImageSubjectError`). `lib/images/ai.ts#generateAiImage` — the
+  SINGLE path from the pipeline to the flash-image model — calls the guard BEFORE dispatching; `ai.test.ts`
+  proves a "smiling advisor shaking hands with a client" prompt throws and **the Gemini boundary is never
+  invoked**. The guard is deliberately over-broad (bias to rejection): "professional", "no people" (in
+  negation), etc. all reject — a false positive costs one abstract fallback, a false negative ships a
+  prohibited image. `buildImagePrompt` constructs prompts from a constrained abstract/office/nature
+  vocabulary so the input is safe by construction; the guard is the backstop.
+- **Stock-first, AI-capped resolution is pure + unit-tested independent of IO.** `lib/images/slots.ts`
+  (`SITE_IMAGE_SLOTS` — 3 minimal slots per §6.7 "typography over imagery"; `planImageResolution`) owns the
+  priority order (advisor upload → stock → capped AI → none) and the 3-image cap. `resolveSiteImages`
+  (`resolve.ts`) is the injectable orchestrator: searches stock for every non-advisor slot FIRST, plans, then
+  generates AI only for stock misses within budget, stores each result, emits `STOCK_PHOTO_CREDITS.md` + an
+  image manifest. All IO (`searchStock`, `fetchImageBytes`, `generateAiImage`, `store.putAsset`,
+  `persistManifest`) is injected so the order + cap are tested with no live Supabase/Gemini/network.
+- **Image generation goes through the 008 chokepoint.** Added `GeminiClient.generateImage` (flash-image model,
+  `responseModalities:["IMAGE"]`, inline-image extraction, no repair loop — an image response has media or it
+  doesn't). It reuses the exact cost/quota seams: `assertCanGenerateImage()` halts the 4th image BEFORE
+  dispatch, `assertCanSpend(worstCase)` enforces the $2 cap, `recordUsage` bills every attempt,
+  `recordImage()` consumes a quota unit only on success. Per-site image cost worst case ≈ 3 × $0.04 = $0.12,
+  far under the $2 guard; the manifest carries `costUsd` for telemetry.
+- **Legal copy is DETERMINISTIC, not AI-generated.** `lib/legal-pages/templates.ts` builds Privacy / ToS /
+  404 from template functions — legal boilerplate must be predictable, reviewable, and identical run-to-run;
+  an AI paraphrase of a liability clause is a compliance risk, not a feature. Privacy is Reg S-P aware, covers
+  contact-form collection, and varies by state (CCPA/CPRA for CA, VCDPA/CPA/CTDPA/UCPA/TDPSA/OCPA/MCDPA for
+  the other comprehensive-law states) + names the state of registration for state-registered advisers. ToS
+  carries the §14.1 informational-only / no-advice / limitation-of-liability language. Privacy + ToS are
+  `required:true, removable:false` (§4.4). **Discovered the standard disclaimer word "guarantee" is a
+  prohibited term** (ria/v1.0) — reworded ToS ("does not ensure future results", "Investment Risk") so the
+  copy passes Layer-2. `service.test.ts` runs the REAL ruleset over the generated Privacy + ToS offline
+  (build-loop step 6) → both `pass` / 0 violations.
+- **`generated_content` is the single source the build (024) reads.** Legal pages persist as
+  `generated_content` rows (page = `privacy`/`terms`/`not-found`, section `legal`); the image manifest
+  persists as page `_images`, section `manifest`. Both are append-only inserts (002's trigger only blocks
+  content UPDATEs). This keeps copy (020), images (022), and legal (022) all under one order-scoped,
+  versioned table for 024 to assemble.
+- **Migration `20260705120000_site_images.sql`:** extends `assets.type` CHECK with `stock` (AI images already
+  had `ai_generated`) + creates the PUBLIC `site-assets` Storage bucket (website imagery is served to
+  visitors, unlike the private `intake-docs` bucket).
+- **Pipeline wiring:** replaced the `images` stub with `images.generate` (`runImagesStep`) + added a
+  `legal.generate` step (`generateLegalPages`), both injectable (defaults to the real bodies; tests inject
+  stubs). Both are non-state enrichment steps; legal failures escalate under the `images` stage to avoid
+  churning PIPELINE_STAGES / the retry table. A shared per-order `CostAccumulator` across generation+images
+  isn't threaded yet (Inngest step memoization doesn't serialize accumulator state) — the $2 + 3-image guards
+  hold WITHIN the images step, which is where image spend lives; note for 020/024.
+- **Deferred behind live keys/infra (`[~]`, same posture as 008/012/033):** Unsplash (`UNSPLASH_ACCESS_KEY`) +
+  Pexels (`PEXELS_API_KEY`) and Gemini (`GEMINI_API_KEY`) — the real clients are wired + env-gated; with no
+  keys stock returns a clean miss and AI can't run, so the whole feature degrades gracefully. Live Storage
+  upload + `assets`/`generated_content` writes need Supabase (no Docker). All decision logic (order, cap,
+  guard, credits, manifest, legal copy, Layer-2) is tested at the boundary. 404 aesthetic RENDER + footer
+  link-up land with templates (016/018) + build (024); 022 ships the content objects at their canonical routes.
+- **No UI in this ticket** (pipeline + content generation, like 006/012/014) — no frontend-test / preview-URL
+  handoff applies; the handoff is the test suites + the dev-verifiable pipeline steps.

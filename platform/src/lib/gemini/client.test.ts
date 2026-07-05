@@ -403,3 +403,91 @@ describe("GeminiClient cost guard — accounting + enforcement", () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+/** A flash-image response: inline image bytes on the first candidate's parts. */
+function imageResponse(
+  b64: string,
+  mimeType: string,
+  input: number,
+  output: number,
+): GenAIResponse {
+  return {
+    candidates: [
+      { content: { parts: [{ inlineData: { mimeType, data: b64 } }] } },
+    ],
+    usageMetadata: usage(input, output),
+  };
+}
+
+describe("GeminiClient.generateImage (§6.7 capped AI images)", () => {
+  it("returns the inline image bytes + mime, routed to the flash-image model", async () => {
+    const { boundary, calls } = fakeBoundary([
+      imageResponse("aW1hZ2VieXRlcw==", "image/png", 60, 1290),
+    ]);
+    const client = new GeminiClient(boundary);
+
+    const result = await client.generateImage({
+      prompt: "abstract emerald gradient",
+    });
+
+    expect(result.data).toBe("aW1hZ2VieXRlcw==");
+    expect(result.mimeType).toBe("image/png");
+    expect(result.model).toBe(GEMINI_MODELS.flashImage);
+    expect(result.usage.outputTokens).toBe(1290);
+    expect(result.costUsd).toBeGreaterThan(0);
+    // Requested the image modality from the image model.
+    expect(calls[0].model).toBe(GEMINI_MODELS.flashImage);
+  });
+
+  it("consumes exactly one image-quota unit on success", async () => {
+    const { boundary } = fakeBoundary([
+      imageResponse("Ym9keQ==", "image/jpeg", 60, 1290),
+    ]);
+    const acc = new CostAccumulator();
+    const client = new GeminiClient(boundary, { costAccumulator: acc });
+
+    await client.generateImage({ prompt: "calm nature landscape" });
+    expect(acc.snapshot().imageCount).toBe(1);
+  });
+
+  it("halts the 4th image at the quota cap BEFORE dispatching", async () => {
+    const { boundary, calls } = fakeBoundary([
+      imageResponse("eA==", "image/png", 60, 1290),
+    ]);
+    const acc = new CostAccumulator();
+    acc.recordImage();
+    acc.recordImage();
+    acc.recordImage();
+    const client = new GeminiClient(boundary, { costAccumulator: acc });
+
+    await expect(
+      client.generateImage({ prompt: "office interior" }),
+    ).rejects.toBeInstanceOf(CostBudgetExceededError);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("throws (never returns free text) when the response carries no image", async () => {
+    const { boundary } = fakeBoundary([
+      { text: "sorry, no image", usageMetadata: usage(60, 20) },
+    ]);
+    const client = new GeminiClient(boundary);
+
+    await expect(
+      client.generateImage({ prompt: "abstract pattern" }),
+    ).rejects.toBeInstanceOf(SchemaValidationError);
+  });
+
+  it("maps a 429 during image generation to a typed rate-limit error", async () => {
+    const { boundary } = fakeBoundary([
+      () => {
+        const e = new Error("quota") as Error & { status: number };
+        e.status = 429;
+        throw e;
+      },
+    ]);
+    const client = new GeminiClient(boundary);
+    await expect(
+      client.generateImage({ prompt: "nature scene" }),
+    ).rejects.toBeInstanceOf(GeminiRateLimitError);
+  });
+});

@@ -12,6 +12,8 @@ export {
   type OutputSchema,
   type GenerateJSONOptions,
   type GenerateJSONResult,
+  type GenerateImageOptions,
+  type GenerateImageResult,
   type GeminiClientOptions,
 } from "./client";
 
