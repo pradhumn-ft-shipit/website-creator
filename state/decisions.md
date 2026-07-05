@@ -1057,3 +1057,25 @@ B Vercel deploy+launch, C DNS monitor cron) and a note to land them as separate 
 prose across surviving tickets (done + remaining) to point only at surviving IDs. plan.md DAG, "Unblocked
 right now," and "Blocked" sections rewritten to the 16-ticket shape. Critical path is now 016 → 020 → 024 →
 (029, 032). Unblocked now: 004, 013, 014, 016, 022, 035, 037.
+
+---
+
+## 2026-07-05 · 037 Platform legal (ToS/Privacy/DPA) — counsel gate deferred
+
+**Choice.** Drafted WRI's own ToS, Privacy Policy, and DPA template (PRD §14.2/§14.3/§14.5/§14.6) as a
+single deep module `platform/src/lib/legal/content.ts` (structured `LegalDocument`/`LegalSection` data,
+not hard-coded JSX per page) rendered by one shared `src/components/legal/legal-document-view.tsx`, with
+thin page wrappers at `/legal/terms`, `/legal/privacy`, `/legal/dpa` (+ `/legal` index). ToS §5 carries the
+§14.3 indemnification clause; ToS §10 incorporates the DPA by reference automatically (no separate
+signature, per §14.2); Privacy §1 states the controller/processor split (§14.6), §5 lists processors
+(Vercel/Supabase/Resend/Gemini/Firecrawl/Stripe/Cloudflare), §6–7 cover CCPA/CPRA access+deletion within
+30 days.
+
+**Counsel gate (§17.5).** These are AFK Termly-style drafts, not final legal advice. Added
+`LEGAL_REVIEW_PENDING = true` (`platform/src/lib/legal/content.ts`) as the single flip-switch — every
+legal page reads it and renders a visible "pending counsel review" banner (`data-testid=
+"legal-review-pending-banner"`) so an unreviewed draft can't silently ship. **Do not flip to `false`
+until external counsel review of the ToS/Privacy/DPA/indemnification language is complete** — record
+that sign-off as a new decisions.md entry when it happens, per PRD §17.5 (required before private beta,
+not before this AFK ticket can be marked done). Ticket 037's own acceptance box for counsel review is
+marked `[~]` deferred, not `[x]`.
