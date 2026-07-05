@@ -4,7 +4,37 @@
 > The plan is the collection of tickets in `issues/`. This file is the at-a-glance DAG + status.
 > There are no phases — only "what is currently unblocked." Pick the lowest-ID unblocked ticket.
 
-## Status: Tickets re-consolidated (2026-07-05) — remaining work 24 → 16 tickets; **013 · 016 · 022 · 035 unblocked, 020 next on critical path**
+## Status: 7 parallel branches MERGED into main (2026-07-06) — **004 · 013 · 014 · 016 · 022 · 035 · 037 DONE**; 018 · 020 · 028 · 030 · 031 now unblocked, 020 on critical path
+
+**Merge pass (2026-07-06).** All 7 parallel-worktree branches merged into `main`, isolated-first
+(016 → 037 → 004 → 035 → 014 → 022 → 013), each as a `--no-ff` merge commit. Conflicts were `decisions.md`
+append-tails (kept every section) + `pipeline.{ts,test.ts}` (took both 014's iapd step and 022's
+images/legal steps). Five semantic reconciliations done by hand — see decisions.md (2026-07-06 · Merge
+reconciliation) for the full record:
+1. **Migrations renumbered** to distinct sequential timestamps: `…120000` drafts (035) · `…120100`
+   customer_assets_bucket (014) · `…120200` site_images (022) · `…120300` site_assets_bucket (013).
+2. **Buckets consolidated (compliance).** 013's `site-assets` stays PRIVATE (advisor PII uploads, sole
+   writer); 022's public imagery repointed into 014's PUBLIC `customer-assets` bucket. Resolves the
+   013↔022 same-name/different-visibility collision without ever making the PII bucket public.
+3. **`assets.type`** = one authoritative CHECK (core union + `stock`) in 022's migration.
+4. **`pipeline.ts`** carries both the iapd and images/legal steps; all `runPipeline` tests inject all three.
+5. **`gen:types` still deferred** (Docker down) — merged `database.types.ts` already has the 035 draft
+   table; typecheck + build green. Regenerate once Docker/Supabase is up.
+
+**Green on merged main:** typecheck ✓ · `npm test` **624 passed / 83 files** · lint ✓ · build ✓ (exit 0).
+Both HIL checkpoints were signed off pre-merge: **016** Trust render (Lighthouse 100/100/100/100, a11y AA
+clean) and **013** intake wireframe (template-pick kept at end of flow). All 7 worktrees removed.
+
+### Session deferrals to track
+- **037** counsel review before private beta (flip `LEGAL_REVIEW_PENDING`, record in decisions.md).
+- **004** live Resend domain (SPF/DKIM/DMARC) for real sends + webhook secret.
+- **014** live `adviserinfo.sec.gov` field-mapping confirmation.
+- **022/035** live Gemini/Unsplash/Pexels keys; **035** live weekly-cron flag + editor/diff-viewer UI.
+- **013** mid-intake resume routing (returning advisor with an existing `payment_received` order lands on
+  handoff, not back in intake) + logo pixel-resize → 024.
+- **016** mobile Lighthouse perf gate (validated visually, not hard-gated) + AA-gold-from-arbitrary-accent → 024.
+
+## Status (prior): Tickets re-consolidated (2026-07-05) — remaining work 24 → 16 tickets; **013 · 016 · 022 · 035 unblocked, 020 next on critical path**
 
 **Re-ticketing pass (2026-07-05):** with the CLAUDE.md scope guardrail raised 5 → 12 files, the remaining
 (not-done) tickets were re-run through `skills/vertical-slice-kanban.md` and consolidated from 24 → 16.
@@ -120,27 +150,20 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 
 ## Unblocked right now
 
-Seven tickets have every blocker done and are pickable now:
+Five tickets have every blocker done and are pickable now (after the 2026-07-06 merge):
 
-- **020** Generation + copy review (⊣ 006✓, 007✓, 008✓, 009✓, 012✓, **016**) — _not quite: still needs 016._
-  It's the **critical-path pick once 016 lands** (only remaining blocker). Listed here for leverage: everything
-  downstream (024, 029, 034) waits on it.
-- **016** Astro shared lib + Trust reference template (⊣ 005✓, 001✓) — **highest-leverage unblocked pick.**
-  Sole remaining blocker on 020, 018, 024, 031. HIL anchor sign-off on the Trust render.
-- **013** Intake confirm + Round-2 + assets + template selection (⊣ 012✓, 002✓) — HIL wireframe checkpoint,
-  then AFK. Unblocks 030.
-- **014** SEC IAPD auto-pull (⊣ 002✓, 009✓) — pure AFK; feeds 024 footer targets + 030 refresh button.
-- **022** Generated-site images + legal/hygiene pages (⊣ 002✓, 005✓, 008✓, 009✓) — pure AFK; feeds 024.
-- **035** `/admin/compliance` ruleset mgmt + research agent (⊣ 006✓, 033✓) — pure AFK.
-- **004** Email infra (Resend) (⊣ 001✓, 002✓) — AFK, but needs a live Resend domain to satisfy acceptance;
-  unblocks 024, 028, 032, 034.
-- **037** Platform legal (⊣ 001✓) — AFK drafting + counsel gate before private beta.
+- **020** Generation copy + copy preview/revise/approve (⊣ 006✓, 007✓, 008✓, 009✓, 012✓, 016✓) —
+  **critical-path pick.** Everything downstream (024, 029, 034) waits on it. HIL wireframe checkpoint.
+- **018** Modern + Boutique templates (⊣ 016✓) — pure AFK; last blocker on 024.
+- **028** Lead capture API + leads tab (⊣ 002✓, 004✓, 027✓) — pure AFK; feeds 034.
+- **030** Assets + Team management tabs (⊣ 013✓, 014✓, 027✓) — HIL, then AFK.
+- **031** Blog upload + compliance check + publish (⊣ 006✓, 016✓, 027✓, 002✓) — pure AFK.
 
-**Critical path:** 016 → 020 → 024 → (029, 032). Build 016 first; it frees generation, which frees the deploy
-chain, which frees edit-chat and billing.
+**Critical path:** 020 → 024 → (029, 032). Build 020 first (needs the 018 templates in parallel for 024);
+generation frees the deploy chain, which frees edit-chat and billing.
 
 ## In progress
-- _(nothing in flight — 010 + 011 done)_
+- _(nothing in flight — the 7-branch merge landed 2026-07-06)_
 
 ## Done
 - **010 — Onboarding shell + industry/sub-class + payment placeholder + order create (PRD §4.1 steps 4–6, §7.7,
@@ -393,18 +416,15 @@ chain, which frees edit-chat and billing.
 - PRD read end-to-end; v1 DAG defined.
 
 ## Blocked (still gated by an undone blocker)
-- **018** Modern + Boutique ⊣ 016.
-- **020** Generation + copy review ⊣ 016.
-- **024** Build → deploy → launch → DNS ⊣ 016, 018, 020, 022, 004.
-- **028** Lead capture ⊣ 004.
-- **029** Edit chat ⊣ 020, 024.
-- **030** Assets + Team tabs ⊣ 013, 014.
-- **031** Blog ⊣ 016.
-- **032** Billing ⊣ 004, 024.
-- **034** Layer-3 queue + violations + observability ⊣ 020, 028, 004.
+- **024** Build → deploy → launch → DNS ⊣ **018, 020** (016✓, 022✓, 004✓ now done).
+- **029** Edit chat ⊣ **020, 024**.
+- **032** Billing ⊣ **024** (004✓ done).
+- **034** Layer-3 queue + violations + observability ⊣ **020** (028 now unblocked, 004✓ done).
 
-Done (14): 001, 002, 003, 005, 006, 007, 008, 009, 00A, 010, 011, 012, 027, 033.
-Unblocked & pickable (7): 004, 013, 014, 016, 022, 035, 037 — see "Unblocked right now" above.
+Done (21): 001, 002, 003, 004, 005, 006, 007, 008, 009, 00A, 010, 011, 012, 013, 014, 016, 022, 027, 033,
+035, 037.
+Unblocked & pickable (5): 018, 020, 028, 030, 031 — see "Unblocked right now" above.
+Remaining after those (4, still blocked): 024, 029, 032, 034.
 
 ## Notes / external prerequisites (PRD §17.5)
 - GitHub App registration → needed for 024.

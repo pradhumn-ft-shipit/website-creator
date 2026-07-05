@@ -24,8 +24,16 @@ import { fetchImageBytes, searchStock } from "./stock";
 
 type AdminClient = SupabaseClient<Database>;
 
-/** Public Storage bucket generated-site imagery lives in (024 pulls from here). */
-export const SITE_ASSETS_BUCKET = "site-assets";
+/**
+ * Public Storage bucket generated-site imagery lives in (024 pulls from here).
+ *
+ * Merge reconciliation (2026-07-06): this is the shared PUBLIC bucket created by
+ * 014's migration (`customer-assets`) — it holds both the generated site's
+ * imagery (this module) and the public SEC compliance docs (014). It is
+ * deliberately NOT 013's `site-assets` bucket, which is PRIVATE and holds
+ * advisor-uploaded logo/team/office photos (PII-adjacent). See state/decisions.md.
+ */
+export const SITE_ASSETS_BUCKET = "customer-assets";
 
 /** The generated_content "page" the image manifest is persisted under. */
 export const IMAGE_MANIFEST_PAGE = "_images";

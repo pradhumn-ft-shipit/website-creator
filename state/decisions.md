@@ -1327,3 +1327,45 @@ Consolidated 022+023. Two deep modules under `platform/src/lib/` + a `generateIm
   link-up land with templates (016/018) + build (024); 022 ships the content objects at their canonical routes.
 - **No UI in this ticket** (pipeline + content generation, like 006/012/014) — no frontend-test / preview-URL
   handoff applies; the handoff is the test suites + the dev-verifiable pipeline steps.
+
+---
+
+## 2026-07-06 · Merge reconciliation — 7 parallel worktree branches → main (016·037·004·035·014·022·013)
+
+Merged the seven `ticket/*` branches built in parallel (off `8037233`) into `main`, isolated-first:
+016 → 037 → 004 → 035 → 014 → 022 → 013. All conflicts were `state/decisions.md` append-tails (resolved
+by keeping every branch's section) plus `platform/src/lib/inngest/pipeline.{ts,test.ts}` (014 + 022 both
+edited — took BOTH: the `iapd` step body AND the `images.generate`/`legal.generate` step bodies). Five
+semantic reconciliations git could not do:
+
+1. **Migration timestamp collision.** Four migrations were all stamped `20260705120000`. Renumbered to
+   distinct sequential timestamps in apply/merge order: `…120000` compliance_ruleset_drafts (035),
+   `…120100` customer_assets_bucket (014), `…120200` site_images (022), `…120300` site_assets_bucket (013).
+
+2. **Storage buckets — the 013↔022 `site-assets` collision (compliance decision).** 013 created a PRIVATE
+   `site-assets` bucket (advisor-uploaded logo/team/office photos — PII-adjacent; the built site consumes
+   processed copies, it does not hot-link). 022 created a PUBLIC `site-assets` bucket (generated stock/AI
+   imagery, served to site visitors via `getPublicUrl`). Same id, conflicting `public` flag → the winner
+   was migration-order-dependent, and a public flag on the PII bucket would have leaked team/office photos.
+   **Resolution:** keep `site-assets` PRIVATE for 013's uploads (sole writer), and route 022's public
+   imagery into the PUBLIC `customer-assets` bucket that 014 already creates for public SEC docs. Two
+   buckets, PII stays private. Edits: `lib/images/service.ts` `SITE_ASSETS_BUCKET` `"site-assets"` →
+   `"customer-assets"` (+ its unit test); 022's migration dropped its bucket `insert` (customer-assets is
+   014's). 022's per-order image paths and 014's account-namespaced doc paths don't collide in the shared
+   bucket. **Not** a name-swap for its own sake — it's the only consolidation that keeps PII private.
+
+3. **`assets.type` CHECK.** Core schema already carried `logo/team_photo/office/doc_adv/doc_crs/doc_other/
+   ai_generated`; only 022 altered it, adding `stock`. Left as ONE authoritative drop/add-constraint in
+   022's migration producing the full union — no per-value stacking.
+
+4. **`pipeline.ts`.** Took both the 014 `iapd` step and the 022 `images.generate` + `legal.generate` steps.
+   Because the merged pipeline now runs all three, every `runPipeline` test call was updated to inject
+   `iapd`/`images`/`legal` noops (a test that mocked only one would otherwise execute the real bodies of
+   the others against the mock client).
+
+5. **`gen:types` still deferred (Docker down).** No branch actually edited `database.types.ts`; the merged
+   file already contains the `compliance_ruleset_drafts` type (035), typecheck + build are green against it,
+   so regeneration is a formality to run once Docker/Supabase is up (same standing deferral as 001–012).
+
+**Green on merged main:** `npm run typecheck`, `npm test` (**624 passed / 83 files**), `npm run lint`,
+`npm run build` (exit 0). Worktrees removed after verification.

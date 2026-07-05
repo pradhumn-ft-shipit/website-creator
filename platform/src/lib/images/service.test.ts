@@ -8,8 +8,8 @@ import {
 } from "./service";
 
 describe("SITE_ASSETS_BUCKET", () => {
-  it("is a public bucket name for generated-site imagery", () => {
-    expect(SITE_ASSETS_BUCKET).toBe("site-assets");
+  it("is the shared public bucket (014's customer-assets) for generated-site imagery", () => {
+    expect(SITE_ASSETS_BUCKET).toBe("customer-assets");
   });
 });
 
