@@ -3,7 +3,7 @@
 **Epic:** Billing
 **Type:** AFK (+ Q10b retention-offer scope)
 **Blocks:** —
-**Blocked by:** 003, 004, 025, 027
+**Blocked by:** 003, 004, 024, 027
 **PRD trace:** §4.6 (cancellation), §12.8 (billing tab), §15 (pricing/billing), CLAUDE.md (archive-never-delete)
 
 ## Slice

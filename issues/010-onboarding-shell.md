@@ -2,7 +2,7 @@
 
 **Epic:** Auth & onboarding
 **Type:** human-in-loop (wireframe checkpoint before build — Q1c)
-**Blocks:** 012, 013, 015, 020
+**Blocks:** 012, 013, 020
 **Blocked by:** 003, 009
 **PRD trace:** §4.1 (steps 4–6), §7.7 (onboarding UX), §15.4 (payment placeholder for alpha)
 

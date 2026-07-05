@@ -2,7 +2,7 @@
 
 **Epic:** Platform foundation
 **Type:** AFK
-**Blocks:** 003, 006, 009, 011, 012, 013, 014, 020, 022, 023, 027, 028, 031, 033 (most feature tickets)
+**Blocks:** 003, 006, 009, 011, 012, 013, 014, 020, 022, 027, 028, 031, 033 (most feature tickets)
 **Blocked by:** 001
 **PRD trace:** §10 (data model — full table list), §10.2 (key design decisions), §10.3 (deferred)
 

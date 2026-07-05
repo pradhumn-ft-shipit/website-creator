@@ -10,7 +10,7 @@
 Post-launch management of assets and team members, flowing through the deploy pipeline.
 - **Assets (§7.9, §12.4):** grid of cards (thumbnail, filename, "Used on:" badge, hover Replace/Remove); always-visible drag-drop upload with per-file progress; **two-step confirmation** modal on any change ("Update live now / Save for next batch / Cancel"); sections Logo / Team Photos / Office / Documents (ADV, CRS, Privacy) / Other; "Refresh ADV/CRS from SEC IAPD" button (calls 014).
 - **Team (§12.5):** structured form per member (name, title, designations multi-select, bio + char count, photo, LinkedIn); drag-to-reorder (`order_index`); add/remove with confirmation. New team-photo upload triggers the structured form before appearing on site.
-- **Pipeline:** changes flow through the same compliance + deploy path as edits (029 → 024/025).
+- **Pipeline:** changes flow through the same compliance + deploy path as edits (029 → 024).
 - **Audit:** replacements set `assets.replaced_from_id`.
 
 ## Acceptance

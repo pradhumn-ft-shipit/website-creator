@@ -2,7 +2,7 @@
 
 **Epic:** Admin tooling
 **Type:** AFK (admin tooling, §7.10 low-fidelity-OK — Q6a)
-**Blocks:** 034, 035, 036
+**Blocks:** 034, 035
 **Blocked by:** 009, 002, 003
 **PRD trace:** §11.1 (orders dashboard), §7.10 (admin UX), §13.2 (failure recovery), §10.1 (`admin_alerts`)
 

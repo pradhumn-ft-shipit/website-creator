@@ -2,7 +2,7 @@
 
 **Epic:** Foundation / design
 **Type:** human-in-loop (direction sign-off on the Slice-1 proof; rollout is AFK)
-**Blocks:** every platform UI ticket — re-touches 001, 003, 027; gates the *look* of 028, 029, 030, 031, 032, 033, 034, 035, 036, 010, 013, 015, 021
+**Blocks:** every platform UI ticket — re-touches 001, 003, 027; gates the *look* of 028, 029, 030, 031, 032, 033, 034, 035, 010, 013, 020
 **Blocked by:** — (foundational; can run now)
 **PRD trace:** §7.3 (visual system), §7.5 (single component library), §7.6 (states), §7.13 (reference bar), §7 overall
 
@@ -52,7 +52,7 @@ Confirmed with the owner via a 4-question round:
 - **Slice 2 (AFK):** roll the system across the **dashboard shell + Site Overview + the §7.6 loading/error/empty
   states** (027 surfaces).
 - **Slice 3 (AFK):** roll across **auth screens (003)** + the `/health` + `/` landing (001).
-- _Onboarding (010/013/015) and admin (033–036) adopt the system natively when they're built — no back-fill
+- _Onboarding (010/013) and admin (033–035) adopt the system natively when they're built — no back-fill
   slice needed._
 
 ## Acceptance

@@ -35,4 +35,4 @@ Turn an advisor's existing site (or uploaded docs) into structured intake data.
 
 ## Notes
 - Both paths converge on the same Gemini extraction pipeline (§4.2).
-- Brand colors extracted here feed template-selection previews (015) and generation voice/style.
+- Brand colors extracted here feed template-selection previews (013) and generation voice/style.

@@ -3,7 +3,7 @@
 **Epic:** Customer dashboard
 **Type:** AFK (Q1c design autonomy; + Q8b support-routing scope)
 **Blocks:** —
-**Blocked by:** 006, 020, 024, 025, 027
+**Blocked by:** 006, 020, 024, 027
 **PRD trace:** §4.4 (edit flow + allowed/not-allowed), §7.8 (edit chat UX), §8.5 (memory model), §12.3
 
 ## Slice

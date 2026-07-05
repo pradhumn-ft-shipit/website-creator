@@ -2,7 +2,7 @@
 
 **Epic:** Email
 **Type:** AFK
-**Blocks:** 025, 028, 032, 036
+**Blocks:** 024, 028, 032, 034
 **Blocked by:** 001, 002
 **PRD trace:** §9.4 (deliverability), §10.1 (`email_log`), CLAUDE.md (Resend fallback on bounce/complaint)
 
@@ -11,7 +11,7 @@ A single deep `sendEmail()` module every later feature uses, with full audit log
 - **Service:** Resend client wrapper exposing `sendEmail({template, to, data, replyTo?})`. From `noreply@wri.com`; supports per-send `Reply-To` (needed for lead notifications §4.5).
 - **Templates:** React-email base layout + a registry keyed by template name (`verify_email`, `launch`, `lead`, `dns_success`, `cancellation_*`, `payment_failed`). Stub bodies acceptable; real copy lands with the consuming ticket.
 - **Logging:** every send writes an `email_log` row with `resend_message_id` and `status`; a webhook (or status poll) updates `delivered|bounced|complained`.
-- **Fallback (CLAUDE.md):** on bounce/complaint, log + surface (for `/admin/email-log` in 036); never blind-retry.
+- **Fallback (CLAUDE.md):** on bounce/complaint, log + surface (for `/admin/email-log` in 034); never blind-retry.
 - **Verify path:** `POST /api/dev/send-test-email` (dev-gated) sends one email and writes the log row.
 
 ## Acceptance

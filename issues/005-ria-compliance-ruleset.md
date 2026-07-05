@@ -2,7 +2,7 @@
 
 **Epic:** Compliance engine (the moat)
 **Type:** AFK authoring + human gate (two-person compliance sign-off before publish — PRD §5.7) — Q3a
-**Blocks:** 006, 016, 023
+**Blocks:** 006, 016, 022
 **Blocked by:** 001 (for the `lint:rulesets` script location; authoring can begin in parallel)
 **PRD trace:** §5.3 (RIA v1 ruleset), §5.5 (state overlays), §5.6 (storage & versioning), §18.2 (quick-reference + footer template)
 

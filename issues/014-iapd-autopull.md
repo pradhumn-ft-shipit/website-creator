@@ -2,7 +2,7 @@
 
 **Epic:** AI pipeline orchestration
 **Type:** AFK
-**Blocks:** 024, 030
+**Blocks:** 030
 **Blocked by:** 002, 009
 **PRD trace:** §5.4 (IAPD auto-pull), §5.5 (registration), CLAUDE.md (IAPD → scrape → upload fallback chain)
 

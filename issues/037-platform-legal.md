@@ -22,4 +22,4 @@ WRI's own legal pages, required before public launch.
 
 ## Notes
 - **External prerequisite (§17.5):** legal review of ToS/Privacy/DPA/indemnification **before private beta** — do not treat the generated drafts as final without it.
-- Distinct from generated-site legal (023), which covers the *advisor's* site.
+- Distinct from generated-site legal (022), which covers the *advisor's* site.

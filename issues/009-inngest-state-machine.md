@@ -2,7 +2,7 @@
 
 **Epic:** AI pipeline orchestration
 **Type:** AFK
-**Blocks:** 010, 012, 014, 020, 022, 024, 025, 026, 033
+**Blocks:** 010, 012, 014, 020, 022, 024, 033
 **Blocked by:** 001, 002
 **PRD trace:** §9.2 (Inngest orchestration), §13.1 (state machine), §13.2 (failure recovery), §18.1 (full state diagram)
 
@@ -25,4 +25,4 @@ The pipeline spine: Inngest wired, the order state machine modeled, transitions 
 ## Notes
 - Vercel functions cap at 90–120s; all long work lives in Inngest steps, not API routes (§9.2). API routes only *enqueue*.
 - Layer-3 (`compliance_review_layer3`) is a *state in the machine*, not out-of-band (CLAUDE.md) — first 50 sites + first 10 after a new ruleset + any Layer-2-flagged site (§5.2, §13.3).
-- Keep step bodies thin here; real implementations replace the stubs in 012/014/020/022/024/025/026.
+- Keep step bodies thin here; real implementations replace the stubs in 012/014/020/022/024.

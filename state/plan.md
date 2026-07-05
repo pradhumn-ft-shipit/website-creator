@@ -4,7 +4,16 @@
 > The plan is the collection of tickets in `issues/`. This file is the at-a-glance DAG + status.
 > There are no phases — only "what is currently unblocked." Pick the lowest-ID unblocked ticket.
 
-## Status: 012 Scrape + intake.process + docs-upload fallback DONE — the AI pipeline now does real work; **013 + (with 016) 020 next**
+## Status: Tickets re-consolidated (2026-07-05) — remaining work 24 → 16 tickets; **013 · 016 · 022 · 035 unblocked, 020 next on critical path**
+
+**Re-ticketing pass (2026-07-05):** with the CLAUDE.md scope guardrail raised 5 → 12 files, the remaining
+(not-done) tickets were re-run through `skills/vertical-slice-kanban.md` and consolidated from 24 → 16.
+Done tickets (001–003, 005–012, 00A, 027, 033) were left untouched. Merges: 015→013, 017→016, 019→018,
+021→020, 023→022, **025+026→024**, **036→034**. See decisions.md (2026-07-05 · re-ticketing) for the full
+map and rationale. The larger **024** (build→deploy→launch→DNS) carries a documented 3-sub-slice work plan
+because it deliberately exceeds the 12-file guideline.
+
+## Status (prior): 012 Scrape + intake.process + docs-upload fallback DONE — the AI pipeline now does real work
 
 012 landed (2026-06-05). The `scrape` + `intake` pipeline stubs are now real: new `lib/firecrawl/` (fetch-boundary
 crawl client) + `lib/intake/` (sufficiency → scrape → docs → extraction → upload). Firecrawl crawl → §4.3
@@ -78,75 +87,57 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 - **006** Layer-2 validator + ruleset loader `[AFK]` ⊣ 002✓, 005✓, 008✓ — **DONE** · → 020, 021, 029, 031, 034
 
 ### AI pipeline (Inngest steps — §9.2, §18.1)
-- **012** Scrape (Firecrawl) + intake.process + docs-upload fallback (§4.2, §4.3) `[AFK]` ⊣ 008✓, 009✓, 010✓ — **UNBLOCKED (next critical-path pick)**
-- **014** SEC IAPD auto-pull step (§5.4) `[AFK]` ⊣ 002, 009
-- **020** Generation: full-site copy, Layer-1 → `generated_content` (§8) `[AFK]` ⊣ 006, 007, 008, 009, 012, 016
-- **022** Image strategy: stock search + capped AI images (§6.7) `[AFK]` ⊣ 008, 009
-- **023** Generated-site legal pages: privacy/ToS/404 (§6.9, §14.1) `[AFK]` ⊣ 002, 005
-- **024** Build assembly + GitHub repo create/push (GitHub App) (§9.5) `[AFK]` ⊣ 016, 017, 018, 019, 020, 023, 009
-- **025** Vercel deploy + verify + DNS fetch + launch email + MX check (§9.6, §9.7) `[AFK]` ⊣ 024, 004
-- **026** DNS propagation monitor cron (7d) + success email (§4.1.18) `[AFK]` ⊣ 025
+- **012** Scrape (Firecrawl) + intake.process + docs-upload fallback (§4.2, §4.3) `[AFK]` ⊣ 008✓, 009✓, 010✓ — **DONE**
+- **014** SEC IAPD auto-pull step (§5.4) `[AFK]` ⊣ 002✓, 009✓ — **UNBLOCKED**
+- **020** Generation copy (Layer 1/2 → `generated_content`) + copy preview/revise(≤3)/approve (§8, §4.1.13) `[HIL: wireframe checkpoint]` ⊣ 006✓, 007✓, 008✓, 009✓, 012✓, **016** _(was 020+021)_
+- **022** Generated-site images (stock + capped AI) + legal/hygiene pages (§6.7, §6.9, §14.1) `[AFK]` ⊣ 002✓, 005✓, 008✓, 009✓ — **UNBLOCKED** _(was 022+023)_
+- **024** Build assembly + GitHub push + Vercel deploy + launch email + DNS monitor (§9.5–§9.7) `[AFK · 3 sub-slices]` ⊣ **016, 018, 020, 022**, 004 _(was 024+025+026)_
 
 ### Onboarding (§4.1, §7.7, §8.3)
-- **010** Onboarding shell + industry/sub-class + payment placeholder + order create `[HIL: wireframe checkpoint]` ⊣ 003, 009 — **DONE** · → 012, 013, 015
-- **011** Waitlist capture (4 non-RIA industries) (§2.2) `[AFK]` ⊣ 001, 002 — **DONE** (built with 010)
-- **013** Round-1 confirm-or-correct + Round-2 questions + asset upload `[HIL: wireframe checkpoint]` ⊣ 012, 002
-- **015** Template selection UI (§6.1) `[AFK]` ⊣ 013, 002
+- **010** Onboarding shell + industry/sub-class + payment placeholder + order create `[HIL]` ⊣ 003✓, 009✓ — **DONE**
+- **011** Waitlist capture (4 non-RIA industries) (§2.2) `[AFK]` ⊣ 001✓, 002✓ — **DONE**
+- **013** Intake confirm-or-correct + Round-2 + asset upload + template selection (§4.1, §8.3, §6.1) `[HIL: wireframe checkpoint]` ⊣ 012✓, 002✓ — **UNBLOCKED** _(was 013+015)_
 
 ### Templates (Astro — §6, §7)
-- **016** Shared component lib + content schema + sitemap.json + section-removal + footer (§6.2, §6.3) `[HIL: anchor sign-off]` ⊣ 005, 001
-- **017** Trust template `[HIL: anchor sign-off]` ⊣ 016
-- **018** Modern template `[AFK]` ⊣ 016, 017
-- **019** Boutique template `[AFK]` ⊣ 016, 017
-
-### Copy review (§4.1.13)
-- **021** Copy preview + revision rounds (max 3) + final approval `[HIL: wireframe checkpoint]` ⊣ 020
+- **016** Astro shared lib + content schema + sitemap + section-removal + footer + **Trust reference template** (§6, §7) `[HIL: anchor sign-off]` ⊣ 005✓, 001✓ — **UNBLOCKED** _(was 016+017)_
+- **018** Modern + Boutique templates (§6.1) `[AFK]` ⊣ **016** _(was 018+019)_
 
 ### Customer dashboard (§12)
-- **027** Dashboard shell + Site Overview `[AFK]` ⊣ 003, 002
-- **028** Lead capture API (Turnstile/honeypot) + leads tab (§4.5) `[AFK]` ⊣ 002, 004, 027
-- **029** Edit chat + compliance re-validation + redeploy (§4.4, §7.8, §8.5) `[AFK]` ⊣ 006, 020, 024, 025, 027
-- **030** Assets + Team management tabs (§12.4, §12.5) `[AFK]` ⊣ 013, 014, 027
-- **031** Blog upload + compliance check + publish (§5.9, §12.7) `[AFK]` ⊣ 006, 016, 027, 002
-- **032** Billing: Stripe + cancellation flow + failed payment (§4.6, §15) `[AFK]` ⊣ 003, 004, 025, 027
+- **027** Dashboard shell + Site Overview `[AFK]` ⊣ 003✓, 002✓ — **DONE**
+- **028** Lead capture API (Turnstile/honeypot) + leads tab (§4.5) `[AFK]` ⊣ 002✓, **004**, 027✓
+- **029** Edit chat + compliance re-validation + redeploy (§4.4, §7.8, §8.5) `[AFK]` ⊣ 006✓, **020, 024**, 027✓
+- **030** Assets + Team management tabs (§12.4, §12.5) `[HIL]` ⊣ **013, 014**, 027✓
+- **031** Blog upload + compliance check + publish (§5.9, §12.7) `[AFK]` ⊣ 006✓, **016**, 027✓, 002✓
+- **032** Billing: Stripe + cancellation + failed payment (§4.6, §15) `[AFK]` ⊣ 003✓, **004, 024**, 027✓
 
 ### Admin tooling (§11)
-- **033** `/admin/orders` + state history + one-click retry `[AFK]` ⊣ 009, 002, 003 — **DONE**
-  (S1: gate + queue + retry; S2: detail view + `order_state_events` history)
-- **034** Layer-3 review queue + `/admin/compliance/violations` (§5.2, §11.3) `[AFK]` ⊣ 033, 006, 020 · _Q4c: 009 gating → flagged-only_
-- **035** `/admin/compliance` ruleset mgmt + research agent + publish + re-validate (§5.7) `[AFK]` ⊣ 006, 033
-- **036** `/admin/leads` + `/admin/email-log` + `/admin/health` (§11.4–§11.5, §13.6) `[AFK]` ⊣ 033, 028, 004
+- **033** `/admin/orders` + state history + one-click retry `[AFK]` ⊣ 009✓, 002✓, 003✓ — **DONE**
+- **034** Layer-3 review queue + violations + observability (leads/email-log/health) (§5.2, §11.3–§11.5, §13.6) `[AFK]` ⊣ 033✓, 006✓, **020, 028, 004** · _Q4c: 009 gating → flagged-only_ _(was 034+036)_
+- **035** `/admin/compliance` ruleset mgmt + research agent + publish + re-validate (§5.7) `[AFK]` ⊣ 006✓, 033✓ — **UNBLOCKED**
 
 ### Platform legal (§14.2)
-- **037** Platform ToS / Privacy / DPA `[AFK build · counsel gate]` ⊣ 001 (external: legal counsel before private beta)
+- **037** Platform ToS / Privacy / DPA `[AFK build · counsel gate]` ⊣ 001✓ — **UNBLOCKED** (external: legal counsel before private beta)
 
 ## Unblocked right now
 
-- **012** Scrape (Firecrawl) + intake.process + docs-upload fallback (⊣ 008✓, 009✓, **010✓**) — **now fully
-  unblocked.** This is the next critical-path pick: it's the first real Inngest pipeline step and the last
-  hard blocker (with 016) on **020** generation. **Highest-leverage pick.**
-- **016** Template shared lib (⊣ 005✓, 001✓) — the other 020 blocker; AFK, parallelizable with 012.
-- **004** Email infra (Resend), **037** Platform legal — standalone, still unblocked (004 needs a live Resend
-  domain to satisfy acceptance; 037 carries a counsel gate).
-- **006 done** → **020** generation (⊣ 006✓, 007✓, 008✓, 009✓, 012, 016) now needs only **012 + 016**;
-  **029** edit chat, **031** blog, **034** Layer-3 queue each clear their 006 dependency (each still gated by
-  its own other blockers). 006 ships the reusable `runLayer2(...)` + `validateContent(...)` + the ruleset
-  loader/mirror + `recordViolations`.
-- **007 done** (⊣ 001, 008 — both done): supplies `GENERATED_SITE_SCHEMA` + `prompts/v1` + the eval gate to **020**.
-- **Next best picks (pure AFK):** with 006 done, the moat-side leverage now flows through **012** (scrape+intake)
-  and **016** (template shared lib) — the last two blockers on **020** (generation). Also standalone: **004**
-  (email — needs a live Resend key+domain), **011** (waitlist — fully verifiable), **037** (counsel gate).
-- **009 done** unblocks **033** /admin/orders (done) and **010** Onboarding (⊣ 003, 009 — unblocked, light
-  wireframe checkpoint). Hard blocker cleared for 012/014/020/022/024/025/026.
-- **Next best picks (pure AFK):** **006** (Layer-2 validator — highest downstream leverage now 005 landed),
-  then **004** (email — 025/028/032/036; needs a live Resend key+domain to satisfy acceptance, so pick alongside
-  the domain prereq) and **011** (waitlist — standalone, fully verifiable). 037 carries a counsel gate.
-- **003 done** unblocked: **027** Dashboard shell (✓ Slice 1 built), **033** /admin/orders (also 009),
-  **010** Onboarding (also 009), **032** Billing (also 004, 025).
-- **027 done (both slices)** — the dashboard shell + nav + Site Overview + Settings now exist, so **028**
-  (Leads tab), **029** (Edit chat), **030** (Assets/Team), **031** (Blog), **032** (Billing) each have a
-  shell to hang their tab on (each still gated by its own other blockers).
-- 002 also directly unblocks 006, 014, 023, 028, 031 (per their `⊣` once their other blockers land).
+Seven tickets have every blocker done and are pickable now:
+
+- **020** Generation + copy review (⊣ 006✓, 007✓, 008✓, 009✓, 012✓, **016**) — _not quite: still needs 016._
+  It's the **critical-path pick once 016 lands** (only remaining blocker). Listed here for leverage: everything
+  downstream (024, 029, 034) waits on it.
+- **016** Astro shared lib + Trust reference template (⊣ 005✓, 001✓) — **highest-leverage unblocked pick.**
+  Sole remaining blocker on 020, 018, 024, 031. HIL anchor sign-off on the Trust render.
+- **013** Intake confirm + Round-2 + assets + template selection (⊣ 012✓, 002✓) — HIL wireframe checkpoint,
+  then AFK. Unblocks 030.
+- **014** SEC IAPD auto-pull (⊣ 002✓, 009✓) — pure AFK; feeds 024 footer targets + 030 refresh button.
+- **022** Generated-site images + legal/hygiene pages (⊣ 002✓, 005✓, 008✓, 009✓) — pure AFK; feeds 024.
+- **035** `/admin/compliance` ruleset mgmt + research agent (⊣ 006✓, 033✓) — pure AFK.
+- **004** Email infra (Resend) (⊣ 001✓, 002✓) — AFK, but needs a live Resend domain to satisfy acceptance;
+  unblocks 024, 028, 032, 034.
+- **037** Platform legal (⊣ 001✓) — AFK drafting + counsel gate before private beta.
+
+**Critical path:** 016 → 020 → 024 → (029, 032). Build 016 first; it frees generation, which frees the deploy
+chain, which frees edit-chat and billing.
 
 ## In progress
 - _(nothing in flight — 010 + 011 done)_
@@ -401,18 +392,23 @@ Legend: `[AFK]` agent-completable · `[HIL]` human-in-loop · `[AFK build · gat
 - Repo scaffold (git init, state/, issues/, compliance/ria/v1.0/, platform/, templates/, .gitignore).
 - PRD read end-to-end; v1 DAG defined.
 
-## Blocked
-- Now unblocked & pickable: **004, 016, 013 (⊣ 012✓), 037**. (012 done.) **016** is now the *last* blocker on
-  **020** (generation): 020 ⊣ 012✓ + 016 — build the template shared lib (016) and the AI pipeline's generation
-  stage is fully unblocked. **013** (round-1 confirm / round-2 / asset-upload UI) consumes 012's
-  `structured_intake_json` + the docs-upload API and is now pickable; **015** ⊣ 013. **035** ⊣ 006✓+033✓ fully
-  unblocked. **029/031/034** still gated (034 ⊣ 020; 029 ⊣ 020/024/025; 031 ⊣ 016). Still blocked: everything
-  else — see `⊣ blocked by` above.
-  (001, 002, 003, 005, 006, 007, 008, 009, 00A, 010, 011, 012, 027, 033 done.)
+## Blocked (still gated by an undone blocker)
+- **018** Modern + Boutique ⊣ 016.
+- **020** Generation + copy review ⊣ 016.
+- **024** Build → deploy → launch → DNS ⊣ 016, 018, 020, 022, 004.
+- **028** Lead capture ⊣ 004.
+- **029** Edit chat ⊣ 020, 024.
+- **030** Assets + Team tabs ⊣ 013, 014.
+- **031** Blog ⊣ 016.
+- **032** Billing ⊣ 004, 024.
+- **034** Layer-3 queue + violations + observability ⊣ 020, 028, 004.
+
+Done (14): 001, 002, 003, 005, 006, 007, 008, 009, 00A, 010, 011, 012, 027, 033.
+Unblocked & pickable (7): 004, 013, 014, 016, 022, 035, 037 — see "Unblocked right now" above.
 
 ## Notes / external prerequisites (PRD §17.5)
 - GitHub App registration → needed for 024.
-- Vercel team account + billing → needed for 025.
+- Vercel team account + billing → needed for 024 (deploy sub-slice).
 - Resend domain verification (SPF/DKIM/DMARC) → needed for 004 (prod sends).
 - Stripe product/price setup → needed for 032.
 - Legal review of ToS/Privacy/DPA/indemnification → gates 037 (before private beta).

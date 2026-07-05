@@ -1026,3 +1026,34 @@ calls). (3) **Scrape-content truncation for pathological huge sites** — we fai
 upload 9, schema 7, extraction 4, upload-service 3, pipeline branch 2), `npm run typecheck`, `npm run lint`,
 `npm run build` (`/api/onboarding/docs` compiles dynamic). **012 Done — unblocks 013 + 020** (020 still needs
 **016**). No UI in 012 → no preview URL; verify locally per the catch-up commands once keys/Docker are present.
+
+---
+
+## 2026-07-05 · Ticket consolidation (re-ticketing pass)
+
+**Context.** The CLAUDE.md scope guardrail was raised from "more than 5 files → stop and split" to
+"more than 12 files." The old 5-file ceiling had forced several features to be split into two tickets
+that were really one vertical slice (generate + review; shared-lib + reference template; etc.). With the
+higher ceiling, the remaining (not-done) tickets were re-run through `skills/vertical-slice-kanban.md`.
+
+**Choice.** Consolidated the **24 remaining tickets → 16**. Done tickets (001–003, 005–012, 00A, 027, 033)
+were left untouched — reworking them would destroy completed-acceptance provenance for no benefit.
+
+Merge map (target ← merged-away):
+- **013** ← 015  (template selection is the last screen of the same intake flow)
+- **016** ← 017  (Trust is the reference render that proves the shared lib — already the Q2b anchor pair)
+- **018** ← 019  (Modern + Boutique: identical shape, both inherit the anchor bar AFK)
+- **020** ← 021  (generate → preview → revise(≤3) → approve is one vertical slice)
+- **022** ← 023  (images + legal/hygiene pages: the two secondary-content producers, both block 024)
+- **024** ← 025, 026  (build → deploy → launch → DNS monitor: the whole pipeline tail)
+- **034** ← 036  (Layer-3/violations + read-only observability: the rest of the admin console)
+
+**Aggressiveness.** Owner chose the "more aggressive" option (24 → 16) over the conservative (24 → 21)
+and the natural-pairings-only (24 → 18) variants — explicitly accepting that **024** exceeds the 12-file
+guideline. Mitigation: 024 is written with three ordered, independently-verifiable sub-slices (A build+GitHub,
+B Vercel deploy+launch, C DNS monitor cron) and a note to land them as separate commits rather than one push.
+
+**Cross-reference cleanup.** Remapped all `Blocks` / `Blocked by` header fields and forward-looking body
+prose across surviving tickets (done + remaining) to point only at surviving IDs. plan.md DAG, "Unblocked
+right now," and "Blocked" sections rewritten to the 16-ticket shape. Critical path is now 016 → 020 → 024 →
+(029, 032). Unblocked now: 004, 013, 014, 016, 022, 035, 037.

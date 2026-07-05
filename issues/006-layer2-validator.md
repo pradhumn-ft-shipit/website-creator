@@ -2,7 +2,7 @@
 
 **Epic:** Compliance engine (the moat)
 **Type:** AFK
-**Blocks:** 020, 021, 029, 031, 034
+**Blocks:** 020, 029, 031, 034
 **Blocked by:** 002, 005, 008
 **PRD trace:** §5.2 (three-layer engine — Layer 2), §5.6 (versioning), §8.1 (Flash for validation)
 

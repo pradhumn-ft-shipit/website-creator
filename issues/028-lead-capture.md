@@ -2,7 +2,7 @@
 
 **Epic:** Lead capture
 **Type:** AFK (Q1c design autonomy; + Q9b digest scope)
-**Blocks:** 036
+**Blocks:** 034
 **Blocked by:** 002, 004, 027
 **PRD trace:** §4.5 (lead flow), §6.4 (forms → WRI API), §12.6 (leads tab), CLAUDE.md (Turnstile)
 
@@ -21,7 +21,7 @@ Receive contact-form submissions from generated sites into WRI, notify the advis
 - [ ] Lead data never lands in the customer's GitHub repo.
 
 ## Notes
-- Per-customer `TURNSTILE_SITE_KEY` is set as a Vercel env var in 025.
+- Per-customer `TURNSTILE_SITE_KEY` is set as a Vercel env var in 024 (deploy sub-slice B).
 - WRI is data *processor* for lead PII (§14.6) — advisor is controller.
 
 ## Decision (2026-05-31)

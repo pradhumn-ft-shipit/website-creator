@@ -215,7 +215,7 @@ Never surface a raw API error to the user. Queue and retry, or route to the fall
 - **Cost** — Gemini calls cost real money. Per-site generation target: under $2. If a change would push past this, stop and confirm.
 - **Compliance** — Never ship copy or a template change that hasn't passed Layer 2 validation. If working in `compliance/`, never publish a ruleset without two-person review (PRD §5.7).
 - **AI images** — Hard prohibition on AI-generated people, hands holding documents, or anything resembling client/advisor likenesses (PRD §6.7). This is a compliance rule, not a stylistic preference.
-- **Scope** — If a change touches more than 5 files, stop and break it into smaller steps.
+- **Scope** — If a change touches more than 12 files, stop and break it into smaller steps.
 - **Rollback** — If something breaks after a change, revert before trying a different fix.
 - **Destructive** — Before deleting, overwriting, or restructuring existing files, confirm. Customer GitHub repos and Vercel projects are *especially* destructive surfaces — archive, never delete (PRD §4.6 — 90-day archive on cancellation).
 - **Dependency** — Before adding a package, state what it does and why existing tools don't cover it. We are committed to shadcn/ui + Tailwind + Lucide; new UI libraries require explicit decision in `state/decisions.md`.
