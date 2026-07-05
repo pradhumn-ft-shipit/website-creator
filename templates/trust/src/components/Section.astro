@@ -1,0 +1,14 @@
+---
+// Generic content section wrapper with consistent rhythm. `tone` swaps the surface.
+interface Props {
+  tone?: 'paper' | 'mist' | 'navy';
+  labelledby?: string;
+}
+const { tone = 'paper', labelledby } = Astro.props;
+const bg = tone === 'mist' ? 'bg-mist/40' : tone === 'navy' ? 'bg-brand-navy text-paper' : 'bg-paper';
+---
+<section class={bg} aria-labelledby={labelledby}>
+  <div class="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
+    <slot />
+  </div>
+</section>

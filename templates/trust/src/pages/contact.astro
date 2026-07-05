@@ -1,0 +1,66 @@
+---
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import PageHeader from '../components/PageHeader.astro';
+import { content } from '../config/site.mjs';
+const { contact, firm } = content;
+// Leads POST to the WRI platform API (§6.4), not the customer repo. Endpoint is injected
+// at build time (ticket 028/024); placeholder here.
+const leadEndpoint = firm.leadEndpoint || 'https://app.wri.example.com/api/leads';
+---
+<Base title="Contact" description={contact.body} path="/contact">
+  <PageHeader eyebrow="Get in touch" title={contact.headline} lede={contact.body} />
+  <Section>
+    <div class="grid gap-16 md:grid-cols-[1fr_0.8fr]">
+      <!-- Contact form (labels associated, honeypot + Turnstile slot per §6.4) -->
+      {contact.showForm && (
+        <form method="POST" action={leadEndpoint} class="space-y-6" aria-labelledby="contact-form-title">
+          <h2 id="contact-form-title" class="text-2xl">Request an introduction</h2>
+          <div class="grid gap-6 sm:grid-cols-2">
+            <div>
+              <label for="name" class="block text-sm font-medium text-brand-navy">Full name</label>
+              <input id="name" name="name" type="text" required autocomplete="name" class="mt-2 h-12 w-full rounded-sm border border-brand-navy/20 bg-paper px-4 text-ink focus:border-brand-navy" />
+            </div>
+            <div>
+              <label for="email" class="block text-sm font-medium text-brand-navy">Email</label>
+              <input id="email" name="email" type="email" required autocomplete="email" class="mt-2 h-12 w-full rounded-sm border border-brand-navy/20 bg-paper px-4 text-ink focus:border-brand-navy" />
+            </div>
+          </div>
+          <div>
+            <label for="phone" class="block text-sm font-medium text-brand-navy">Phone <span class="font-normal text-ink/50">(optional)</span></label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" class="mt-2 h-12 w-full rounded-sm border border-brand-navy/20 bg-paper px-4 text-ink focus:border-brand-navy" />
+          </div>
+          <div>
+            <label for="message" class="block text-sm font-medium text-brand-navy">How can we help?</label>
+            <textarea id="message" name="message" rows="5" class="mt-2 w-full rounded-sm border border-brand-navy/20 bg-paper px-4 py-3 text-ink focus:border-brand-navy"></textarea>
+          </div>
+          <!-- Honeypot (visually hidden, aria-hidden) -->
+          <div class="hidden" aria-hidden="true"><label>Leave this field empty<input name="company_website" tabindex="-1" autocomplete="off" /></label></div>
+          <!-- Cloudflare Turnstile mounts here at build (§6.4) -->
+          <div data-turnstile-slot></div>
+          <button type="submit" class="btn-primary w-full sm:w-auto">Send request</button>
+          <p class="text-xs text-ink/50">By submitting, you agree to be contacted about your inquiry. See our <a href="/privacy" class="underline">Privacy Policy</a>.</p>
+        </form>
+      )}
+
+      <!-- Office + scheduling -->
+      <aside class="space-y-10">
+        {firm.calcomUrl && (
+          <div>
+            <p class="eyebrow">Prefer to book directly?</p>
+            <a href={firm.calcomUrl} target="_blank" rel="noopener noreferrer" class="btn-ghost mt-4">Schedule a 30-minute call</a>
+          </div>
+        )}
+        <div>
+          <p class="eyebrow">Our office</p>
+          <address class="mt-4 space-y-1 not-italic leading-relaxed text-ink/80">
+            {firm.address && <span class="block">{firm.address.street}</span>}
+            {firm.address && <span class="block">{firm.address.city}, {firm.address.region} {firm.address.postalCode}</span>}
+          </address>
+          {firm.phone && <a href={`tel:${firm.phone.replace(/[^0-9+]/g, '')}`} class="mt-4 block font-medium text-brand-navy hover:text-brand-gold">{firm.phone}</a>}
+          {firm.email && <a href={`mailto:${firm.email}`} class="block font-medium text-brand-navy hover:text-brand-gold">{firm.email}</a>}
+        </div>
+      </aside>
+    </div>
+  </Section>
+</Base>

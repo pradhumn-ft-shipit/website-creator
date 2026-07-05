@@ -1,0 +1,73 @@
+@import '@fontsource-variable/newsreader';
+@import '@fontsource-variable/libre-franklin';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-optical-sizing: auto;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-serif text-brand-navy;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  /* Visible focus at all times (§6.6 / §7.6). */
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid theme('colors.brand.gold');
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: theme('colors.brand.navy');
+    color: theme('colors.paper');
+  }
+}
+
+@layer components {
+  /* Skip link — keyboard users jump straight to main (§6.6 ARIA landmark support). */
+  .skip-link {
+    @apply sr-only;
+  }
+  .skip-link:focus {
+    @apply not-sr-only fixed left-4 top-4 z-50 rounded-md bg-brand-navy px-4 py-2 text-paper;
+  }
+
+  .eyebrow {
+    @apply font-sans text-xs font-semibold uppercase tracking-micro text-brand-gold;
+  }
+
+  .prose-trust {
+    @apply max-w-prose text-lg leading-relaxed text-ink/85;
+  }
+  .prose-trust p + p {
+    @apply mt-6;
+  }
+
+  .rule-gold {
+    @apply h-px w-16 bg-brand-gold;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-sm bg-brand-navy px-7 py-3.5 font-sans text-sm font-semibold tracking-wide text-paper transition-colors duration-200 hover:bg-brand-charcoal;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-sm border border-brand-navy/25 px-7 py-3.5 font-sans text-sm font-semibold tracking-wide text-brand-navy transition-colors duration-200 hover:border-brand-navy hover:bg-brand-navy/5;
+  }
+}

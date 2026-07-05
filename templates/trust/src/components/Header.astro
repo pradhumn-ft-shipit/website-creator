@@ -1,0 +1,62 @@
+---
+// Site header — serif wordmark + nav derived from the shared sitemap/section-removal engine.
+// Nav auto-omits removed pages and renders Client Login as an external link (PRD §6.2/§6.3).
+import { nav, content } from '../config/site.mjs';
+
+const currentPath = new URL(Astro.request.url).pathname.replace(/\/$/, '') || '/';
+const isActive = (href: string) => (href === '/' ? currentPath === '/' : currentPath.startsWith(href));
+const firmName = content.firm.name;
+---
+
+<header class="sticky top-0 z-40 border-b border-brand-navy/10 bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-5 py-4 md:px-8">
+    <a href="/" class="group flex flex-col leading-none" aria-label={`${firmName} — home`}>
+      <span class="font-serif text-xl font-medium text-brand-navy md:text-2xl">{firmName}</span>
+      <span class="mt-1 hidden text-[0.62rem] font-semibold uppercase tracking-micro text-brand-gold sm:block">
+        Registered Investment Adviser
+      </span>
+    </a>
+
+    <nav aria-label="Primary" class="hidden items-center gap-7 lg:flex">
+      {nav.map((item) => (
+        <a
+          href={item.href}
+          target={item.external ? '_blank' : undefined}
+          rel={item.external ? 'noopener noreferrer' : undefined}
+          aria-current={!item.external && isActive(item.href) ? 'page' : undefined}
+          class:list={[
+            'font-sans text-sm font-medium transition-colors',
+            !item.external && isActive(item.href)
+              ? 'text-brand-navy underline decoration-brand-gold decoration-2 underline-offset-8'
+              : 'text-ink/70 hover:text-brand-navy',
+          ]}
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+
+    <a href="/contact" class="hidden shrink-0 md:inline-flex btn-primary !py-2.5 !px-5 !text-[0.8rem]">
+      Schedule a call
+    </a>
+
+    <!-- Mobile: native disclosure, zero JS (keeps Lighthouse Perf high) -->
+    <details class="relative lg:hidden">
+      <summary class="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-sm border border-brand-navy/20 text-brand-navy [&::-webkit-details-marker]:hidden" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </summary>
+      <div class="absolute right-0 mt-3 w-60 rounded-sm border border-brand-navy/10 bg-paper p-2 shadow-xl">
+        {nav.map((item) => (
+          <a
+            href={item.href}
+            target={item.external ? '_blank' : undefined}
+            rel={item.external ? 'noopener noreferrer' : undefined}
+            class="block rounded-sm px-4 py-3 font-sans text-sm font-medium text-ink/80 hover:bg-brand-navy/5 hover:text-brand-navy"
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+    </details>
+  </div>
+</header>

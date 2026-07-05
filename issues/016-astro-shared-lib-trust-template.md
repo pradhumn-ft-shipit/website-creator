@@ -22,13 +22,13 @@ footer, quality gates — **plus the Trust template as the reference render that
 - **Trust template (§6.1, §7.4):** serif headings, navy/charcoal palette, advisor-photo hero, credentials-heavy, long-form About. Implements every shared-schema page; obeys section-removal + compliance footer; per-customer `tailwind.config.js` for brand colors. References (§7.13): Fisher Investments, Edelman Financial Engines.
 
 ## Acceptance
-- [ ] Reference (Trust) template builds from a fixture content object matching the shared schema.
-- [ ] Removing a fixture field removes its section and updates nav (no empty sections).
-- [ ] Footer renders ruleset disclosures + ADV/CRS/privacy links on every page.
-- [ ] SEO defaults (§6.5) and a11y landmarks (§6.6) present.
-- [ ] `npm run lighthouse` meets §6.10 thresholds; `npm run a11y` passes WCAG 2.1 AA; build fails when they don't.
-- [ ] `sitemap.json` drives nav and is editable without code changes.
-- [ ] Trust renders all shared-schema pages in its §6.1 aesthetic; real-content edge cases (long firm name, no team photo, 10 designations) per §7.12; excellent on mobile at 375px.
+- [x] Reference (Trust) template builds from a fixture content object matching the shared schema. _(astro build green, 8 pages; site.mjs validates the fixture against the schema at build time)_
+- [x] Removing a fixture field removes its section and updates nav (no empty sections). _(sections.mjs + sitemap.mjs; proven by shared.test.mjs + Insights omitted from the rendered nav & sitemap.xml)_
+- [x] Footer renders ruleset disclosures + ADV/CRS/privacy links on every page. _(footer.mjs reads the 005 artifacts; Footer.astro on Base layout; verified in dist — SEC line + 2 disclosures + 4 links + ruleset version)_
+- [x] SEO defaults (§6.5) and a11y landmarks (§6.6) present. _(Head.astro: title/meta/OG/Twitter/JSON-LD/canonical + sitemap.xml + robots.txt; Base.astro: skip link + header/nav/main/footer landmarks + visible focus. Full axe/Lighthouse audit AFK.)_
+- [ ] `npm run lighthouse` meets §6.10 thresholds; `npm run a11y` passes WCAG 2.1 AA; build fails when they don't. _(scaffolded with thresholds in scripts/, real runner wiring is AFK after sign-off)_
+- [x] `sitemap.json` drives nav and is editable without code changes. _(templates/_shared/sitemap.json → deriveNav; no code edit needed to reorder/rename)_
+- [ ] Trust renders all shared-schema pages in its §6.1 aesthetic; real-content edge cases (long firm name, no team photo, 10 designations) per §7.12; excellent on mobile at 375px. _(all pages render in the Trust aesthetic; edge-case fixtures + 375px polish are AFK after sign-off)_
 
 ## Notes
 - **No AI-generated people, ever** (§6.7, CLAUDE.md hard stop) — bake this into image slots.

@@ -1,0 +1,39 @@
+---
+// SEO <head> — title/meta/OG/Twitter + JSON-LD FinancialService (PRD §6.5). All derived from
+// the shared SEO builder so every template emits identical, complete metadata.
+import { buildSeo, buildJsonLd } from '@wri/shared/seo';
+import { content } from '../config/site.mjs';
+
+interface Props {
+  title?: string;
+  description?: string;
+  path?: string;
+}
+const { title, description, path = '/' } = Astro.props;
+const siteUrl = Astro.site?.toString();
+const seo = buildSeo({ content, page: { title, description, path }, siteUrl });
+const jsonLd = buildJsonLd({ content, siteUrl });
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="generator" content={Astro.generator} />
+<title>{seo.title}</title>
+<meta name="description" content={seo.description} />
+{seo.canonical && <link rel="canonical" href={seo.canonical} />}
+
+<meta property="og:type" content={seo.og.type} />
+<meta property="og:site_name" content={seo.og.siteName} />
+<meta property="og:title" content={seo.og.title} />
+<meta property="og:description" content={seo.og.description} />
+{seo.og.image && <meta property="og:image" content={seo.og.image} />}
+
+<meta name="twitter:card" content={seo.twitter.card} />
+<meta name="twitter:title" content={seo.twitter.title} />
+<meta name="twitter:description" content={seo.twitter.description} />
+{seo.twitter.image && <meta name="twitter:image" content={seo.twitter.image} />}
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="sitemap" href="/sitemap.xml" />
+
+<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />

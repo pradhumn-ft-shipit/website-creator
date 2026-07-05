@@ -1,0 +1,20 @@
+{
+  "name": "@wri/shared",
+  "version": "1.0.0",
+  "description": "WRI shared Astro foundation — content schema, section-removal, sitemap→nav, compliance footer, SEO defaults. Consumed by the Trust/Modern/Boutique templates.",
+  "type": "module",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": { "types": "./types/index.d.ts", "default": "./src/index.mjs" },
+    "./content-schema": { "types": "./types/index.d.ts", "default": "./src/content-schema.mjs" },
+    "./sections": { "types": "./types/index.d.ts", "default": "./src/sections.mjs" },
+    "./sitemap": { "types": "./types/index.d.ts", "default": "./src/sitemap.mjs" },
+    "./footer": { "types": "./types/index.d.ts", "default": "./src/footer.mjs" },
+    "./seo": { "types": "./types/index.d.ts", "default": "./src/seo.mjs" },
+    "./sitemap.json": "./sitemap.json",
+    "./fixtures/reference-content": { "types": "./types/reference-content.d.ts", "default": "./fixtures/reference-content.mjs" }
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
