@@ -30,12 +30,12 @@ function initials(name: string) {
         {paragraphs.map((p) => <p>{p}</p>)}
       </div>
       <aside class="md:border-l md:border-brand-navy/10 md:pl-10">
-        <p class="text-xs font-semibold uppercase tracking-micro text-brand-gold">At a glance</p>
+        <p class="text-xs font-semibold uppercase tracking-micro text-brand-goldink">At a glance</p>
         <dl class="mt-6 space-y-5 text-sm">
-          <div><dt class="text-ink/50">Registration</dt><dd class="mt-1 font-medium text-brand-navy">{firm.registration === 'sec' ? 'SEC-registered' : `State of ${firm.state}`}</dd></div>
-          {firm.crd && <div><dt class="text-ink/50">Firm CRD</dt><dd class="mt-1 font-medium text-brand-navy">#{firm.crd}</dd></div>}
-          {firm.address && <div><dt class="text-ink/50">Office</dt><dd class="mt-1 font-medium text-brand-navy">{firm.address.city}, {firm.address.region}</dd></div>}
-          <div><dt class="text-ink/50">Standard of care</dt><dd class="mt-1 font-medium text-brand-navy">Fiduciary, always</dd></div>
+          <div><dt class="text-ink/70">Registration</dt><dd class="mt-1 font-medium text-brand-navy">{firm.registration === 'sec' ? 'SEC-registered' : `State of ${firm.state}`}</dd></div>
+          {firm.crd && <div><dt class="text-ink/70">Firm CRD</dt><dd class="mt-1 font-medium text-brand-navy">#{firm.crd}</dd></div>}
+          {firm.address && <div><dt class="text-ink/70">Office</dt><dd class="mt-1 font-medium text-brand-navy">{firm.address.city}, {firm.address.region}</dd></div>}
+          <div><dt class="text-ink/70">Standard of care</dt><dd class="mt-1 font-medium text-brand-navy">Fiduciary, always</dd></div>
         </dl>
       </aside>
     </div>
@@ -54,12 +54,12 @@ function initials(name: string) {
               <img src={person.photoUrl} alt={person.photoAlt || person.name} width="480" height="600" class="h-full w-full object-cover" loading="lazy" />
             ) : (
               <div class="flex h-full items-center justify-center">
-                <span class="font-serif text-5xl text-brand-gold">{initials(person.name)}</span>
+                <span class="font-serif text-5xl text-brand-goldsand">{initials(person.name)}</span>
               </div>
             )}
           </div>
           <h3 class="mt-5 text-xl">{person.name}</h3>
-          <p class="mt-1 text-sm font-medium text-brand-gold">{person.title}</p>
+          <p class="mt-1 text-sm font-medium text-brand-goldink">{person.title}</p>
           {person.credentials && (
             <p class="mt-3 flex flex-wrap gap-1.5">
               {person.credentials.map((c) => <span class="rounded-sm bg-brand-navy/5 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide text-brand-navy">{c}</span>)}

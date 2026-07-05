@@ -3,14 +3,16 @@
 // (buildFooter) are computed ONCE against the content object. Swap `content` for a generated
 // object (ticket 020/024) and the whole template re-renders — no template edits.
 import { join } from 'node:path';
-import { referenceContent } from '@wri/shared/fixtures/reference-content';
+import { pickFixture } from '@wri/shared/fixtures/edge-cases';
 import sitemapData from '@wri/shared/sitemap.json' with { type: 'json' };
 import { validateContent } from '@wri/shared/content-schema';
 import { resolveSite } from '@wri/shared/sections';
 import { deriveNav, internalPages } from '@wri/shared/sitemap';
 import { buildFooter } from '@wri/shared/footer';
 
-export const content = referenceContent;
+// The content object. Defaults to the reference fixture; the render test overrides it with an
+// §7.12 edge-case fixture via TRUST_FIXTURE. At real build time (024) generation supplies this.
+export const content = pickFixture(process.env.TRUST_FIXTURE);
 
 // Fail the build loud if the content object doesn't satisfy the schema contract (§7.11).
 const { ok, errors } = validateContent(content);

@@ -31,7 +31,7 @@ const heroPhoto = firm.heroPhotoUrl || null;
           <dl class="mt-14 grid max-w-lg grid-cols-3 gap-6 border-t border-brand-navy/10 pt-8">
             {home.highlights.map((h) => (
               <div>
-                <dt class="text-xs font-semibold uppercase tracking-micro text-brand-gold">{h.label}</dt>
+                <dt class="text-xs font-semibold uppercase tracking-micro text-brand-goldink">{h.label}</dt>
                 <dd class="mt-2 font-serif text-2xl text-brand-navy md:text-3xl">{h.value}</dd>
               </div>
             ))}
@@ -47,14 +47,14 @@ const heroPhoto = firm.heroPhotoUrl || null;
           <figure class="relative aspect-[4/5] overflow-hidden rounded-sm bg-brand-navy text-paper shadow-2xl">
             <div class="absolute inset-0 opacity-[0.08]" style="background-image:radial-gradient(circle at 1px 1px, #fff 1px, transparent 0);background-size:22px 22px"></div>
             <div class="relative flex h-full flex-col justify-between p-10">
-              <span class="font-serif text-6xl leading-none text-brand-gold">{firm.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>
+              <span class="font-serif text-6xl leading-none text-brand-goldsand">{firm.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>
               <div>
                 <p class="font-serif text-2xl">{principal?.name}</p>
                 <p class="mt-1 text-sm text-paper/70">{principal?.title}</p>
                 {principal?.credentials && (
                   <p class="mt-4 flex flex-wrap gap-2">
                     {principal.credentials.map((c) => (
-                      <span class="rounded-sm border border-brand-gold/40 px-2 py-1 text-[0.68rem] font-semibold uppercase tracking-wide text-brand-gold">{c}</span>
+                      <span class="rounded-sm border border-brand-gold/40 px-2 py-1 text-[0.68rem] font-semibold uppercase tracking-wide text-brand-goldsand">{c}</span>
                     ))}
                   </p>
                 )}
@@ -88,7 +88,7 @@ const heroPhoto = firm.heroPhotoUrl || null;
       <div class="mt-14 grid gap-px overflow-hidden rounded-sm border border-brand-navy/10 bg-brand-navy/10 sm:grid-cols-2 lg:grid-cols-3">
         {services.slice(0, 6).map((s, i) => (
           <div class="bg-paper p-8">
-            <span class="font-serif text-lg text-brand-gold">{String(i + 1).padStart(2, '0')}</span>
+            <span class="font-serif text-lg text-brand-goldink">{String(i + 1).padStart(2, '0')}</span>
             <h3 class="mt-3 text-xl">{s.title}</h3>
             <p class="mt-3 text-sm leading-relaxed text-ink/70">{s.description}</p>
           </div>
@@ -102,7 +102,7 @@ const heroPhoto = firm.heroPhotoUrl || null;
   <Section tone="navy" labelledby="home-cta">
     <div class="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
       <h2 id="home-cta" class="max-w-xl text-3xl text-paper md:text-4xl">A relationship built to last decades, not quarters.</h2>
-      <a href="/contact" class="shrink-0 rounded-sm bg-brand-gold px-8 py-4 font-sans text-sm font-semibold text-brand-navy transition-opacity hover:opacity-90">Begin a conversation</a>
+      <a href="/contact" class="shrink-0 rounded-sm bg-brand-goldsand px-8 py-4 font-sans text-sm font-semibold text-brand-navy transition-opacity hover:opacity-90">Begin a conversation</a>
     </div>
   </Section>
 </Base>

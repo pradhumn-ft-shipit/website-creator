@@ -12,7 +12,10 @@ export default {
         brand: {
           navy: brandColors.primary,
           charcoal: brandColors.secondary,
-          gold: brandColors.accent,
+          gold: brandColors.accent, // decorative only (rules, borders, large display) — NOT small text
+          // AA-safe editorial gold tones (WCAG 2.1 AA, verified by `npm run a11y`):
+          goldink: '#6f5426', // small gold text on light surfaces (paper/mist) — contrast ≥ 4.5
+          goldsand: '#cba86a', // gold text/CTA on the navy surface — contrast ≥ 4.5
         },
         // Fixed Trust surface tones — paper/ink read "established, editorial".
         paper: '#faf8f3',

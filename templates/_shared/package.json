@@ -12,7 +12,8 @@
     "./footer": { "types": "./types/index.d.ts", "default": "./src/footer.mjs" },
     "./seo": { "types": "./types/index.d.ts", "default": "./src/seo.mjs" },
     "./sitemap.json": "./sitemap.json",
-    "./fixtures/reference-content": { "types": "./types/reference-content.d.ts", "default": "./fixtures/reference-content.mjs" }
+    "./fixtures/reference-content": { "types": "./types/reference-content.d.ts", "default": "./fixtures/reference-content.mjs" },
+    "./fixtures/edge-cases": { "types": "./types/edge-cases.d.ts", "default": "./fixtures/edge-cases.mjs" }
   },
   "scripts": {
     "test": "node --test"

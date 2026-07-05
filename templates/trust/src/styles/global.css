@@ -50,7 +50,7 @@
   }
 
   .eyebrow {
-    @apply font-sans text-xs font-semibold uppercase tracking-micro text-brand-gold;
+    @apply font-sans text-xs font-semibold uppercase tracking-micro text-brand-goldink;
   }
 
   .prose-trust {

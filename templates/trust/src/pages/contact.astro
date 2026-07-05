@@ -27,7 +27,7 @@ const leadEndpoint = firm.leadEndpoint || 'https://app.wri.example.com/api/leads
             </div>
           </div>
           <div>
-            <label for="phone" class="block text-sm font-medium text-brand-navy">Phone <span class="font-normal text-ink/50">(optional)</span></label>
+            <label for="phone" class="block text-sm font-medium text-brand-navy">Phone <span class="font-normal text-ink/70">(optional)</span></label>
             <input id="phone" name="phone" type="tel" autocomplete="tel" class="mt-2 h-12 w-full rounded-sm border border-brand-navy/20 bg-paper px-4 text-ink focus:border-brand-navy" />
           </div>
           <div>
@@ -39,7 +39,7 @@ const leadEndpoint = firm.leadEndpoint || 'https://app.wri.example.com/api/leads
           <!-- Cloudflare Turnstile mounts here at build (§6.4) -->
           <div data-turnstile-slot></div>
           <button type="submit" class="btn-primary w-full sm:w-auto">Send request</button>
-          <p class="text-xs text-ink/50">By submitting, you agree to be contacted about your inquiry. See our <a href="/privacy" class="underline">Privacy Policy</a>.</p>
+          <p class="text-xs text-ink/70">By submitting, you agree to be contacted about your inquiry. See our <a href="/privacy" class="underline">Privacy Policy</a>.</p>
         </form>
       )}
 
@@ -57,8 +57,8 @@ const leadEndpoint = firm.leadEndpoint || 'https://app.wri.example.com/api/leads
             {firm.address && <span class="block">{firm.address.street}</span>}
             {firm.address && <span class="block">{firm.address.city}, {firm.address.region} {firm.address.postalCode}</span>}
           </address>
-          {firm.phone && <a href={`tel:${firm.phone.replace(/[^0-9+]/g, '')}`} class="mt-4 block font-medium text-brand-navy hover:text-brand-gold">{firm.phone}</a>}
-          {firm.email && <a href={`mailto:${firm.email}`} class="block font-medium text-brand-navy hover:text-brand-gold">{firm.email}</a>}
+          {firm.phone && <a href={`tel:${firm.phone.replace(/[^0-9+]/g, '')}`} class="mt-4 block font-medium text-brand-navy hover:text-brand-goldink">{firm.phone}</a>}
+          {firm.email && <a href={`mailto:${firm.email}`} class="block font-medium text-brand-navy hover:text-brand-goldink">{firm.email}</a>}
         </div>
       </aside>
     </div>
