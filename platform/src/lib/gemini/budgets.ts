@@ -12,7 +12,8 @@ export type GeminiOperation =
   | "compliance_layer2"
   | "post_launch_edit"
   | "image_generation"
-  | "intake_extraction";
+  | "intake_extraction"
+  | "compliance_research";
 
 export interface TokenBudget {
   /** Soft planning targets (not enforced; used for telemetry/headroom checks). */
@@ -63,6 +64,18 @@ export const TOKEN_BUDGETS: Record<GeminiOperation, TokenBudget> = {
     targetInput: 30_000,
     targetOutput: 3_000,
     capInput: 120_000,
+    capOutput: 8_000,
+  },
+  // NOT in the §8.4 table — added by ticket 035 for the /admin/compliance
+  // research agent (Gemini 2.5 Pro + Google Search). Input is the current
+  // ruleset markdown + the scan prompt (a few thousand tokens); the structured,
+  // cited diff proposal output is moderate. Search grounding can enlarge output,
+  // so we give it generous caps. This is an internal, low-volume admin call — not
+  // on the per-site generation budget — so it never affects the <$2/site guard.
+  compliance_research: {
+    targetInput: 10_000,
+    targetOutput: 4_000,
+    capInput: 20_000,
     capOutput: 8_000,
   },
 };
