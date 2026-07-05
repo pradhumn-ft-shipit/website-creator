@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  */
 const ADMIN_SECTIONS: { label: string; href: string; ready: boolean }[] = [
   { label: "Orders", href: "/admin/orders", ready: true },
-  { label: "Compliance", href: "/admin/compliance", ready: false },
+  { label: "Compliance", href: "/admin/compliance", ready: true },
   { label: "Leads", href: "/admin/leads", ready: false },
   { label: "Email log", href: "/admin/email-log", ready: false },
   { label: "Health", href: "/admin/health", ready: false },

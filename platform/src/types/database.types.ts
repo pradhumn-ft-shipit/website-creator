@@ -580,6 +580,76 @@ export type Database = {
           },
         ];
       };
+      compliance_ruleset_drafts: {
+        Row: {
+          id: string;
+          industry: string;
+          sub_industry: string | null;
+          base_version: string | null;
+          target_version: string;
+          rules_json: Json | null;
+          rules_markdown: string | null;
+          manifest_json: Json | null;
+          research_json: Json | null;
+          reviews_json: Json;
+          status: string;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          published_at: string | null;
+          published_ruleset_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          industry: string;
+          sub_industry?: string | null;
+          base_version?: string | null;
+          target_version: string;
+          rules_json?: Json | null;
+          rules_markdown?: string | null;
+          manifest_json?: Json | null;
+          research_json?: Json | null;
+          reviews_json?: Json;
+          status?: string;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          published_at?: string | null;
+          published_ruleset_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          industry?: string;
+          sub_industry?: string | null;
+          base_version?: string | null;
+          target_version?: string;
+          rules_json?: Json | null;
+          rules_markdown?: string | null;
+          manifest_json?: Json | null;
+          research_json?: Json | null;
+          reviews_json?: Json;
+          status?: string;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          published_at?: string | null;
+          published_ruleset_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "compliance_ruleset_drafts_created_by_fkey";
+            columns: ["created_by"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "compliance_ruleset_drafts_published_ruleset_id_fkey";
+            columns: ["published_ruleset_id"];
+            referencedRelation: "compliance_rulesets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       compliance_violations: {
         Row: {
           id: string;

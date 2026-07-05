@@ -1150,3 +1150,54 @@ Built in an isolated worktree (`ticket/004-email-resend`). One deep module every
 **Green:** `npm test` (435, +46: 6 client + 7 log + 4 send + 9 webhook-lib + 11 templates + 5 webhook-route
 + 4 dev-route), `npm run typecheck`, `npm run lint`, `npm run build` (both new routes compile dynamic).
 **004 Done.**
+
+---
+
+## 2026-07-05 · 035 `/admin/compliance` ruleset mgmt + research + publish + re-validate
+
+**Two-person publish gate enforced in code (§5.7 / CLAUDE.md guardrail).** The
+gate is a pure function (`publish.ts` `checkTwoPersonApproval`/`assertTwoPersonApproval`):
+publishing requires a `drafter` sign-off AND an `approver` sign-off from two
+DIFFERENT people. `publishDraft` calls it FIRST — before any disk write, DB
+insert, or event send — so an under-reviewed publish is impossible (tests assert
+zero side effects on rejection). Reviewer identity is the authenticated admin
+(the review route can't sign off *as* someone else), which is what makes the gate
+meaningful. Sign-offs are stored append-only in `compliance_ruleset_drafts.reviews_json`.
+
+**Draft storage = one new table, reviews embedded.** Added
+`compliance_ruleset_drafts` (migration `20260705120000`) holding proposed
+rules.json/md/manifest + `research_json` (the cited scan proposal) + `reviews_json`
+(sign-off log). Chose a single table with an embedded review array over a separate
+reviews table — internal, low-volume, and the gate reads the whole array anyway.
+Published, immutable ruleset *content* still lives on disk under `compliance/`
+(005); publish writes the new `v{N}/` artifact set + mirrors a `compliance_rulesets`
+row. Supabase/Docker unavailable in-session → hand-added the table to
+`database.types.ts` (re-run `npm run gen:types` once local Supabase is up).
+
+**Research agent is advisory-only.** `research.ts` routes to the existing 008
+`research` use case (Pro + Google Search) under a new `compliance_research` token
+budget (internal call, NOT on the per-site <$2 guard). `parseResearchProposal`
+REJECTS any proposed change with no regulator citation — an un-sourced claim can't
+survive into a proposal. The route returns the proposal without persisting; a human
+turns it into a draft. Never publishes.
+
+**034 seam.** On publish, `compliance.revalidate` is sent; `complianceRevalidation`
+(Inngest) selects affected live sites (`planRevalidation`, pure) and
+`recordRevalidationResult` writes the two artifacts the 034
+`/admin/compliance/violations` queue reads: unresolved `compliance_violations` rows
+(tagged with the NEW version) + a `compliance_review` `admin_alert` per flagged site.
+034 only READS these. The per-site Layer-2 reassembly of `generated_content` is a
+marked `TODO(020)` (content shape) — the loop no-ops on sites without content today.
+
+**Deferrals (marked `[~]`).** (1) The side-by-side Markdown/JSON *editor UI* +
+interactive *diff-viewer UI* — the underlying `diffRulesets` engine + the `lint:rulesets`
+publish gate are built + tested; the authoring surface currently seeds drafts from the
+research proposal and publishes them. (2) `/admin/compliance/violations` UI is 034.
+(3) Live weekly-cron scheduling is gated behind `INNGEST_COMPLIANCE_SCAN_ENABLED=true`
+(off until Gemini keys/quotas are provisioned); the cron + draft-filing logic are wired.
+
+**Green:** `npm test` **432** (+43: diff 5, publish 12, versions 8, research 8, drafts 5,
+revalidation 4, console UI 5, budgets +0 existing), `npm run typecheck`, `npm run lint`,
+`npm run build` (all `/admin/compliance` + `/api/admin/compliance/*` routes compile),
+`lint:rulesets` still ✓. No live Gemini/DB verify (keys/Docker absent) — clients wired,
+boundaries mocked, gated on env.
