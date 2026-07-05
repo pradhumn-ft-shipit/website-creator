@@ -1,0 +1,18 @@
+---
+// Interior page masthead — eyebrow + serif title + optional lede. Trust aesthetic: generous
+// vertical space, gold hairline rule, navy serif.
+interface Props {
+  eyebrow?: string;
+  title: string;
+  lede?: string;
+}
+const { eyebrow, title, lede } = Astro.props;
+---
+<section class="border-b border-brand-navy/10 bg-mist/40">
+  <div class="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <h1 class="mt-4 max-w-3xl text-4xl leading-tight md:text-6xl">{title}</h1>
+    <div class="rule-gold mt-8"></div>
+    {lede && <p class="prose-trust mt-8">{lede}</p>}
+  </div>
+</section>

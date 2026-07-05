@@ -1,0 +1,24 @@
+---
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import PageHeader from '../components/PageHeader.astro';
+import { content, presence } from '../config/site.mjs';
+if (!presence.process) return Astro.redirect('/');
+const process = content.process!; // presence guard guarantees defined
+---
+<Base title="Our Process" description={process.headline} path="/process">
+  <PageHeader eyebrow="How we work" title={process.headline} lede="We move deliberately. Nothing is recommended until we understand the whole picture — and every step is transparent." />
+  <Section>
+    <ol class="grid gap-px overflow-hidden rounded-sm border border-brand-navy/10 bg-brand-navy/10 md:grid-cols-2">
+      {process.steps.map((step, i) => (
+        <li class="bg-paper p-10">
+          <div class="flex items-baseline gap-4">
+            <span class="font-serif text-3xl text-brand-goldink">{String(i + 1).padStart(2, '0')}</span>
+            <h2 class="text-2xl">{step.title}</h2>
+          </div>
+          <p class="mt-4 leading-relaxed text-ink/75">{step.description}</p>
+        </li>
+      ))}
+    </ol>
+  </Section>
+</Base>

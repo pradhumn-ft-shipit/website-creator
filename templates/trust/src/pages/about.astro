@@ -1,0 +1,73 @@
+---
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import PageHeader from '../components/PageHeader.astro';
+import { content, resolved } from '../config/site.mjs';
+import type { Person } from '@wri/shared';
+
+const { about, firm } = content;
+const principal = about.principal;
+// §6.3: solo firm hides the team grid and shows a single principal bio inline.
+const isSolo = resolved.isSolo;
+const paragraphs = about.body.split('\n\n');
+const people: Person[] = [principal, ...(isSolo ? [] : about.team ?? [])].filter(
+  (p): p is Person => Boolean(p),
+);
+
+// Credential-panel fallback (never an AI person, §6.7)
+function initials(name: string) {
+  return name.split(' ').map((w) => w[0]).slice(0, 2).join('');
+}
+---
+
+<Base title="About" description={about.headline} path="/about">
+  <PageHeader eyebrow="Our firm" title={about.headline} />
+
+  <!-- Long-form narrative -->
+  <Section labelledby="about-narrative">
+    <div class="grid gap-14 md:grid-cols-[1.4fr_0.6fr]">
+      <div class="prose-trust" id="about-narrative">
+        {paragraphs.map((p) => <p>{p}</p>)}
+      </div>
+      <aside class="md:border-l md:border-brand-navy/10 md:pl-10">
+        <p class="text-xs font-semibold uppercase tracking-micro text-brand-goldink">At a glance</p>
+        <dl class="mt-6 space-y-5 text-sm">
+          <div><dt class="text-ink/70">Registration</dt><dd class="mt-1 font-medium text-brand-navy">{firm.registration === 'sec' ? 'SEC-registered' : `State of ${firm.state}`}</dd></div>
+          {firm.crd && <div><dt class="text-ink/70">Firm CRD</dt><dd class="mt-1 font-medium text-brand-navy">#{firm.crd}</dd></div>}
+          {firm.address && <div><dt class="text-ink/70">Office</dt><dd class="mt-1 font-medium text-brand-navy">{firm.address.city}, {firm.address.region}</dd></div>}
+          <div><dt class="text-ink/70">Standard of care</dt><dd class="mt-1 font-medium text-brand-navy">Fiduciary, always</dd></div>
+        </dl>
+      </aside>
+    </div>
+  </Section>
+
+  <!-- Principal (always) + team grid (unless solo) -->
+  <Section tone="mist" labelledby="about-people">
+    <p class="eyebrow">The people</p>
+    <h2 id="about-people" class="mt-4 text-3xl md:text-4xl">{isSolo ? 'Your advisor' : 'Our advisors'}</h2>
+
+    <div class="mt-14 grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+      {people.map((person) => (
+        <article class="flex flex-col">
+          <div class="aspect-[4/5] overflow-hidden rounded-sm bg-brand-navy">
+            {person.photoUrl ? (
+              <img src={person.photoUrl} alt={person.photoAlt || person.name} width="480" height="600" class="h-full w-full object-cover" loading="lazy" />
+            ) : (
+              <div class="flex h-full items-center justify-center">
+                <span class="font-serif text-5xl text-brand-goldsand">{initials(person.name)}</span>
+              </div>
+            )}
+          </div>
+          <h3 class="mt-5 text-xl">{person.name}</h3>
+          <p class="mt-1 text-sm font-medium text-brand-goldink">{person.title}</p>
+          {person.credentials && (
+            <p class="mt-3 flex flex-wrap gap-1.5">
+              {person.credentials.map((c) => <span class="rounded-sm bg-brand-navy/5 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide text-brand-navy">{c}</span>)}
+            </p>
+          )}
+          <p class="mt-4 text-sm leading-relaxed text-ink/70">{person.bio}</p>
+        </article>
+      ))}
+    </div>
+  </Section>
+</Base>

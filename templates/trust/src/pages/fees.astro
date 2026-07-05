@@ -1,0 +1,32 @@
+---
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import PageHeader from '../components/PageHeader.astro';
+import { content, presence } from '../config/site.mjs';
+if (!presence.fees) return Astro.redirect('/');
+const fees = content.fees!; // presence guard guarantees defined
+---
+<Base title="Fees" description={fees.headline} path="/fees">
+  <PageHeader eyebrow="Transparency" title={fees.headline} />
+  <Section>
+    <div class="grid gap-14 md:grid-cols-[1.1fr_0.9fr]">
+      <div class="prose-trust">
+        {(fees.body ?? '').split('\n\n').map((p) => <p>{p}</p>)}
+      </div>
+      {fees.tiers && (
+        <div class="rounded-sm border border-brand-navy/10 bg-mist/40 p-8">
+          <p class="text-xs font-semibold uppercase tracking-micro text-brand-goldink">Annual advisory fee</p>
+          <dl class="mt-6 divide-y divide-brand-navy/10">
+            {fees.tiers.map((t) => (
+              <div class="flex items-baseline justify-between py-4">
+                <dt class="text-sm text-ink/75">{t.label}</dt>
+                <dd class="font-serif text-xl text-brand-navy">{t.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p class="mt-6 text-xs leading-relaxed text-ink/70">Fees are disclosed in full in our Form ADV Part 2A.</p>
+        </div>
+      )}
+    </div>
+  </Section>
+</Base>

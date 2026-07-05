@@ -1,0 +1,16 @@
+{
+  "version": "ria.v1",
+  "industry": "ria",
+  "note": "Standard RIA sitemap (PRD §6.2). Versioned per industry; editable without a code deploy — the templates read this file to build nav. `presenceKey` maps a page to the section-removal engine (sections.mjs); pages without one are always present. `external` pages render as a nav link to a content URL rather than an internal route.",
+  "pages": [
+    { "key": "home", "label": "Home", "path": "/", "required": true },
+    { "key": "about", "label": "About", "path": "/about", "required": true },
+    { "key": "services", "label": "Services", "path": "/services", "required": false, "presenceKey": "services" },
+    { "key": "process", "label": "Our Process", "path": "/process", "required": false, "presenceKey": "process" },
+    { "key": "who-we-serve", "label": "Who We Serve", "path": "/who-we-serve", "required": false, "presenceKey": "whoWeServe" },
+    { "key": "insights", "label": "Insights", "path": "/insights", "required": false, "presenceKey": "insights" },
+    { "key": "fees", "label": "Fees", "path": "/fees", "required": false, "presenceKey": "fees" },
+    { "key": "client-login", "label": "Client Login", "external": "firm.custodianLoginUrl", "required": false, "presenceKey": "clientLogin" },
+    { "key": "contact", "label": "Contact", "path": "/contact", "required": true }
+  ]
+}

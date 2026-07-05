@@ -1,0 +1,60 @@
+---
+// Compliance footer (PRD §5.3, §18.2) — renders the ruleset-driven footer model on EVERY page.
+// Content (registration line, disclosures, ADV/CRS/Privacy links) comes from @wri/shared/footer,
+// which reads the authored RIA ruleset. The template styles it but can never omit a disclosure.
+import { footer, content, nav } from '../config/site.mjs';
+const firm = content.firm;
+const year = new Date().getFullYear();
+---
+
+<footer class="mt-24 border-t border-brand-navy/10 bg-brand-navy text-paper">
+  <div class="mx-auto max-w-6xl px-5 py-16 md:px-8">
+    <div class="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr]">
+      <!-- Firm identity + contact -->
+      <div>
+        <p class="font-serif text-2xl">{firm.name}</p>
+        <address class="mt-4 space-y-1 not-italic text-sm leading-relaxed text-paper/70">
+          {firm.address && <span class="block">{firm.address.street}</span>}
+          {firm.address && <span class="block">{firm.address.city}, {firm.address.region} {firm.address.postalCode}</span>}
+          {firm.phone && <a href={`tel:${firm.phone.replace(/[^0-9+]/g, '')}`} class="mt-3 block hover:text-brand-goldsand">{firm.phone}</a>}
+          {firm.email && <a href={`mailto:${firm.email}`} class="block hover:text-brand-goldsand">{firm.email}</a>}
+        </address>
+      </div>
+
+      <!-- Navigation mirror -->
+      <nav aria-label="Footer" class="text-sm">
+        <p class="mb-4 text-xs font-semibold uppercase tracking-micro text-brand-goldsand">Explore</p>
+        <ul class="space-y-2.5">
+          {nav.map((item) => (
+            <li>
+              <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener noreferrer' : undefined} class="text-paper/75 hover:text-paper">{item.label}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <!-- Regulatory disclosure links -->
+      <div class="text-sm">
+        <p class="mb-4 text-xs font-semibold uppercase tracking-micro text-brand-goldsand">Disclosures</p>
+        <ul class="space-y-2.5">
+          {footer.links.map((link) => (
+            <li>
+              {link.href
+                ? <a href={link.href} target="_blank" rel="noopener noreferrer" class="text-paper/75 hover:text-paper">{link.label}</a>
+                : <span class="text-paper/40" title="Document link pending">{link.label}</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Regulatory disclosure text (compliance moat — always rendered) -->
+    <div class="mt-14 border-t border-paper/15 pt-8 text-xs leading-relaxed text-paper/60">
+      <p class="font-medium text-paper/80">{footer.registrationLine}</p>
+      {footer.disclosures.map((line) => <p class="mt-2">{line}</p>)}
+      <p class="mt-6 text-paper/60">
+        &copy; {year} {firm.name}. All rights reserved. Compliance ruleset {footer.rulesetVersion}.
+      </p>
+    </div>
+  </div>
+</footer>
