@@ -14,11 +14,11 @@ WRI's own legal pages, required before public launch.
 - **Generation:** template-based generator (e.g. Termly) or custom generator with legal review; pages live on the platform marketing/app surface.
 
 ## Acceptance
-- [ ] Platform ToS, Privacy Policy, and DPA template exist and are reachable.
-- [ ] ToS includes the indemnification clause (§14.3).
-- [ ] Privacy reflects controller/processor split + CCPA/CPRA rights + processor list.
-- [ ] DPA template is included by default in the ToS.
-- [ ] Legal-counsel review recorded before private beta (§17.5).
+- [x] Platform ToS, Privacy Policy, and DPA template exist and are reachable — `/legal/terms`, `/legal/privacy`, `/legal/dpa` (+ `/legal` index), all statically prerendered (verified via `npm run build`), covered by `src/app/legal/legal-pages.test.tsx`.
+- [x] ToS includes the indemnification clause (§14.3) — §5 "Indemnification and limitation of liability" in `src/lib/legal/content.ts` (`TERMS_OF_SERVICE`).
+- [x] Privacy reflects controller/processor split + CCPA/CPRA rights + processor list — `PRIVACY_POLICY` §1 (roles), §6–7 (CCPA/CPRA), §5 (`PROCESSORS`: Vercel/Supabase/Resend/Gemini/Firecrawl/Stripe/Cloudflare).
+- [x] DPA template is included by default in the ToS — ToS §10 incorporates `/legal/dpa` by reference automatically (no separate signature); `DPA_TEMPLATE` covers roles/sub-processors/assistance/liability.
+- [~] Legal-counsel review recorded before private beta (§17.5) — deferred; `LEGAL_REVIEW_PENDING = true` in `src/lib/legal/content.ts` gates every page with a visible "pending counsel review" banner until counsel sign-off is recorded in `state/decisions.md`.
 
 ## Notes
 - **External prerequisite (§17.5):** legal review of ToS/Privacy/DPA/indemnification **before private beta** — do not treat the generated drafts as final without it.
